@@ -23,7 +23,8 @@ import numpy as np
 from numpy import array
 
 test_size = 2000
-         
+version = 'v2'
+
 directory = 'C:\\Code\\btc\\Trader\\'
 '''
 Use prices.csv when ready
@@ -40,22 +41,24 @@ data_df = data_df.reset_index()
 data_dfc = data_df.replace("NaN",0).replace("N/A",0)
 data_dfc = data_dfc[:test_size]
 
-data_dfc['btce_spread'] = data_dfc['btce_ETH_buy'] - data_dfc['btce_ETH_sell']
-data_dfc['k_spread'] = data_dfc['k_ask'] - data_dfc['K_bid']
-data_dfc['delta_btce_ask'] = data_dfc['btce_ETH_buy'] - data_dfc['btce_ETH_buy'].shift(1)
-data_dfc['delta_btce_bid'] = data_dfc['btce_ETH_sell'] - data_dfc['btce_ETH_sell'].shift(1)
-data_dfc['delta_k_ask'] = data_dfc['k_ask'] - data_dfc['k_ask'].shift(1)
-data_dfc['delta_k_bid'] = data_dfc['K_bid'] - data_dfc['K_bid'].shift(1)
-data_dfc['delta_uc_trans'] = data_dfc['uc_trans'] - data_dfc['uc_trans'].shift(1)
-data_dfc['k_time_prof'] = control * (data_dfc['K_bid'].shift(-1)-1.0016 * data_dfc['k_ask'] -.0016*data_dfc['K_bid'].shift(-1))
-data_dfc['btce_time_prof'] =control * ( data_dfc['btce_ETH_sell'].shift(-1)-1.002 * data_dfc['btce_ETH_buy']-.002*data_dfc['btce_ETH_sell'].shift(-1))
-data_dfc['k_time_prof2'] = control * (data_dfc['K_bid'].shift(-2)-1.0016 * data_dfc['k_ask'] -.0016*data_dfc['K_bid'].shift(-2))
-data_dfc['btce_time_prof2'] =control * ( data_dfc['btce_ETH_sell'].shift(-2)-1.002 * data_dfc['btce_ETH_buy']-.002*data_dfc['btce_ETH_sell'].shift(-2))
-data_dfc['k_time_prof3'] = control * (data_dfc['K_bid'].shift(-3)-1.0016 * data_dfc['k_ask'] -.0016*data_dfc['K_bid'].shift(-3))
-data_dfc['btce_time_prof3'] =control * ( data_dfc['btce_ETH_sell'].shift(-3)-1.002 * data_dfc['btce_ETH_buy']-.002*data_dfc['btce_ETH_sell'].shift(-3))
+def preprocess(data):
+	data_dfc = data
+	data_dfc['btce_spread'] = data_dfc['btce_ETH_buy'] - data_dfc['btce_ETH_sell']
+	data_dfc['k_spread'] = data_dfc['k_ask'] - data_dfc['K_bid']
+	data_dfc['delta_btce_ask'] = data_dfc['btce_ETH_buy'] - data_dfc['btce_ETH_buy'].shift(1)
+	data_dfc['delta_btce_bid'] = data_dfc['btce_ETH_sell'] - data_dfc['btce_ETH_sell'].shift(1)
+	data_dfc['delta_k_ask'] = data_dfc['k_ask'] - data_dfc['k_ask'].shift(1)
+	data_dfc['delta_k_bid'] = data_dfc['K_bid'] - data_dfc['K_bid'].shift(1)
+	data_dfc['delta_uc_trans'] = data_dfc['uc_trans'] - data_dfc['uc_trans'].shift(1)
+	data_dfc['k_time_prof'] = control * (data_dfc['K_bid'].shift(-1)-1.0016 * data_dfc['k_ask'] -.0016*data_dfc['K_bid'].shift(-1))
+	data_dfc['btce_time_prof'] =control * ( data_dfc['btce_ETH_sell'].shift(-1)-1.002 * data_dfc['btce_ETH_buy']-.002*data_dfc['btce_ETH_sell'].shift(-1))
+	data_dfc['k_time_prof2'] = control * (data_dfc['K_bid'].shift(-2)-1.0016 * data_dfc['k_ask'] -.0016*data_dfc['K_bid'].shift(-2))
+	data_dfc['btce_time_prof2'] =control * ( data_dfc['btce_ETH_sell'].shift(-2)-1.002 * data_dfc['btce_ETH_buy']-.002*data_dfc['btce_ETH_sell'].shift(-2))
+	data_dfc['k_time_prof3'] = control * (data_dfc['K_bid'].shift(-3)-1.0016 * data_dfc['k_ask'] -.0016*data_dfc['K_bid'].shift(-3))
+	data_dfc['btce_time_prof3'] =control * ( data_dfc['btce_ETH_sell'].shift(-3)-1.002 * data_dfc['btce_ETH_buy']-.002*data_dfc['btce_ETH_sell'].shift(-3))
+	return data_dfc
 
-
-
+preprocess(data_dfc)
 data_dfc = data_dfc.replace("NaN",0).replace("N/A",0)
 data_dfc = data_dfc[1:-1]
 data_dfc = data_dfc.reset_index()

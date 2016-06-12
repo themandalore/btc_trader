@@ -32,8 +32,8 @@ def k_trade_eth(type,quantity,price):
     return trade
 
 def k_open():
-        x = k.query_private('OpenOrders')
-        return x['result']
+    x = k.query_private('OpenOrders')
+    return x['result']
 
 def k_balance():
       x = k.query_private('Balance')
@@ -41,10 +41,10 @@ def k_balance():
 
 def k_history():
     x = k.query_private('TradesHistory')
-        return x['result']
+    return x['result']
 
-print (k_trade_eth('sell','1',.28))
+#print (k_trade_eth('sell','1',.28))
 
-print(k_balance())
+#print(k_balance())
 
-print (k_open())
+#print (k_open())

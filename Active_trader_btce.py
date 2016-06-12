@@ -76,14 +76,16 @@ while x < 6:
 		'''
 		'''get current best ask price and place limit'''
 		print(k_balance())
-		
+		'''
+		print (k_trade_eth('buy','1','bbuy')
+		time.sleep(15) # 120 equals two minutes
+		print (k_trade_eth('sell','1','bsell'))'''
 	elif a[:1]==1:
 		print (k_trade_eth('buy','10',k_ask)
-		time.sleep((time_lag-1)*5)
-		k_data =  kraken()
-		new_bids= float(k_data['bids'][0][0])
+			time.sleep((time_lag-1)*5)
+			k_data =  kraken()
+			new_bids= float(k_data['bids'][0][0])
 		print (k_trade_eth('sell','10',new_bids)
-		print ((new_bids-k_ask) * 10)
 	else:
 		print ('ERROR')
 

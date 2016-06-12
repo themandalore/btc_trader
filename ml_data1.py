@@ -34,8 +34,7 @@ import math
 from numpy import array
 import pickle
 
-test_size = 500
-version = v2
+version = 'v2'
 
 features = ["btce_spread",
 			"k_spread",
@@ -50,31 +49,40 @@ directory = 'C:\\Code\\btc\\Trader\\Data\\'
 '''
 Use prices.csv when ready
 '''
-classified = 'ml_learned.csv'
+
+
+directory = 'C:\\Code\\btc\\Trader\\Data\\'
+'''
+Use prices.csv when ready
+'''
+classified = 'p_'+version + '_total.csv'
 
 #to_predict =  ['k_take', 'k_take2','k_take3','btce_take','btce_take2','btce_take3']
-to_predict = 'k_take3'
-prof_pred = 'k_time_prof3'
-
-data_df = pd.DataFrame.from_csv(directory + classified)
+to_predict = 'k_take'
+prof_pred = 'k_time_prof'
+cols = np.array(features)
+cols = np.append(cols,to_predict)
+data_dfi = pd.DataFrame.from_csv(directory + classified)
+data_df=data_dfi[cols]
+print (data_df.head())
 data_df = data_df.reset_index()
 dfc = data_df.reindex(np.random.permutation(data_df.index))
 dfc.fillna(value=-99999, inplace=True)
 forecast_out = int(math.ceil(0.01 * len(dfc)))
-X = np.array(dfc.drop([to_predict],1)) 
-X = preprocessing.scale(X)
+dfx = dfc[features]
+X = np.array(dfx)
 dfc.dropna(inplace=True)
 y = np.array(dfc[to_predict])
-y = np.array(dfc[to_predict])
+
 
 X_train, X_test, y_train, y_test = cross_validation.train_test_split(X,y,test_size = .3)
 
 
 #print (data_df.describe())
-
+print (X[0])
 clf = svm.LinearSVC(C=1).fit(X,y)
 clf.fit(X_train, y_train)
-pname = version + '_classifier.pickle'
+pname = 'Classifiers/'+version + '_classifier.pickle'
 with open(pname,'wb') as f:
 	pickle.dump(clf,f)
 
@@ -84,7 +92,7 @@ print ('Accuracy', accuracy)
 print ('Length of Dataset',len(dfc))
 print ('Time in Dataset',len(dfc)/12/60,'hours')
 print ('Number of Opportunities',data_df[data_df[to_predict]>0].count()[to_predict])
-print ('Expected Profit: ', accuracy * (data_df[data_df[prof_pred]>0].sum()[prof_pred]))
+print ('Expected Profit: ', accuracy * (data_dfi[data_dfi[prof_pred]>0].sum()[prof_pred]))
 
 #this treats each row as a day and pushes it back for graphing purposes
 '''

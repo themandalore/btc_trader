@@ -1,45 +1,55 @@
 '''Machine Learning program to figure out how to trade'''
-'''
-To do
-Pull in dataset
-Figure out how to detect arb opportunites and trade them
 
 '''
-
-
-'''
-Get:
 fees -- kraken (maker - .16% , taker .26%)
 		btce (.2% fee)
 		coinbase (maker fee - 0%, taker .25%)
 
 '''
 
+#TAKE OUT difs from dif datasets!!!!!
 
 from sklearn import svm,preprocessing
 from pandas import *
 import pandas as pd
 import numpy as np
 from numpy import array
+import os,glob
+import stored
 
-test_size = 2000
 version = 'v2'
 
-directory = 'C:\\Code\\btc\\Trader\\'
+directory = 'C:\\Code\\btc\\Trader\\Data\\'
 '''
 Use prices.csv when ready
 '''
-classified = 'prices.csv'
+
+classified =version+"_total.csv"
 
 #enter ether quantity to trade (I'm thinking 10 lot, but this quantity could be based later on a maximized quanity)
+
 quantity = 10
-control = 450 * quantity #this is the btc price to calculate profits in terms of dollars
+control = 500 * quantity #this is the btc price to calculate profits in terms of dollars
+
+numby= 0 
+frames = []
+os.chdir(directory)
+for file in glob.glob(version+"_*.csv"):
+    numby = numby +1
+    dfname='df_'+str(numby)
+    dfname = pd.DataFrame.from_csv(file)
+    if numby > 1:
+    	dfone.append(dfname,ignore_index=True)
+    else:
+    	dfone = dfname
+    frames.append(dfname)
+    print(file)
 
 
-data_df = pd.DataFrame.from_csv(directory + classified)
-data_df = data_df.reset_index()
+data_df=dfone
+
+
 data_dfc = data_df.replace("NaN",0).replace("N/A",0)
-data_dfc = data_dfc[:test_size]
 
 def preprocess(data):
 	data_dfc = data
@@ -50,27 +60,22 @@ def preprocess(data):
 	data_dfc['delta_k_ask'] = data_dfc['k_ask'] - data_dfc['k_ask'].shift(1)
 	data_dfc['delta_k_bid'] = data_dfc['K_bid'] - data_dfc['K_bid'].shift(1)
 	data_dfc['delta_uc_trans'] = data_dfc['uc_trans'] - data_dfc['uc_trans'].shift(1)
-	data_dfc['k_time_prof'] = control * (data_dfc['K_bid'].shift(-1)-1.0016 * data_dfc['k_ask'] -.0016*data_dfc['K_bid'].shift(-1))
-	data_dfc['btce_time_prof'] =control * ( data_dfc['btce_ETH_sell'].shift(-1)-1.002 * data_dfc['btce_ETH_buy']-.002*data_dfc['btce_ETH_sell'].shift(-1))
-	data_dfc['k_time_prof2'] = control * (data_dfc['K_bid'].shift(-2)-1.0016 * data_dfc['k_ask'] -.0016*data_dfc['K_bid'].shift(-2))
-	data_dfc['btce_time_prof2'] =control * ( data_dfc['btce_ETH_sell'].shift(-2)-1.002 * data_dfc['btce_ETH_buy']-.002*data_dfc['btce_ETH_sell'].shift(-2))
-	data_dfc['k_time_prof3'] = control * (data_dfc['K_bid'].shift(-3)-1.0016 * data_dfc['k_ask'] -.0016*data_dfc['K_bid'].shift(-3))
-	data_dfc['btce_time_prof3'] =control * ( data_dfc['btce_ETH_sell'].shift(-3)-1.002 * data_dfc['btce_ETH_buy']-.002*data_dfc['btce_ETH_sell'].shift(-3))
-	return data_dfc
+	data_dfc['k_time_prof'] = control * (data_dfc['K_bid'].shift(-time_lag)-1.0016 * data_dfc['k_ask'] -.0016*data_dfc['K_bid'].shift(-time_lag))
+	data_dfc['btce_time_prof'] =control * ( data_dfc['btce_ETH_sell'].shift(-time_lag)-1.002 * data_dfc['btce_ETH_buy']-.002*data_dfc['btce_ETH_sell'].shift(-time_lag))
+	data_dfc['k_take'] = data_dfc.apply(lambda x : 0 if  x['k_time_prof'] <= 0 else 1,axis = 1)
+	data_dfc['btce_take'] = data_dfc.apply(lambda x : 0 if  x['btce_time_prof'] <= 0 else 1,axis = 1)
+	profit_opps = data_dfc['k_take'].sum(axis=0)
+	return data_dfc,profit_opps
+time_lag = 1
+px = 0 
+while (px < 4) and (time_lag < 10):
+	data_dfc,px = preprocess(data_dfc)
+	time_lag= time_lag+1
 
-preprocess(data_dfc)
+
 data_dfc = data_dfc.replace("NaN",0).replace("N/A",0)
 data_dfc = data_dfc[1:-1]
 data_dfc = data_dfc.reset_index()
-
-data_dfc['k_take'] = data_dfc.apply(lambda x : 0 if  x['k_time_prof'] <= 0 else 1,axis = 1)
-data_dfc['btce_take'] = data_dfc.apply(lambda x : 0 if  x['btce_time_prof'] <= 0 else 1,axis = 1)
-data_dfc['k_take2'] = data_dfc.apply(lambda x : 0 if  x['k_time_prof2'] <= 0 else 1,axis = 1)
-data_dfc['btce_take2'] = data_dfc.apply(lambda x : 0 if  x['btce_time_prof2'] <= 0 else 1,axis = 1)
-data_dfc['k_take3'] = data_dfc.apply(lambda x : 0 if  x['k_time_prof3'] <= 0 else 1,axis = 1)
-data_dfc['btce_take3'] = data_dfc.apply(lambda x : 0 if  x['btce_time_prof3'] <= 0 else 1,axis = 1)
-
-
 
 
 '''
@@ -97,5 +102,6 @@ data_dfc['sp_btce_profit'] = data_dfc['btce_spread'] * quantity - (.0032 * quant
 
 
 print (data_dfc.head())
-data_dfc.to_csv('ml_learned.csv')
+print ('TL=',time_lag,'profit opps=',px)
+data_dfc.to_csv(directory+'p_'+classified)
 

@@ -75,12 +75,12 @@ dfc.dropna(inplace=True)
 y = np.array(dfc[to_predict])
 
 
-X_train, X_test, y_train, y_test = cross_validation.train_test_split(X,y,test_size = .3)
+X_train, X_test, y_train, y_test = cross_validation.train_test_split(X,y,test_size = .2)
 
 
 #print (data_df.describe())
-print (X[0])
-clf = svm.LinearSVC(C=1).fit(X,y)
+
+clf = svm.LinearSVC(C=1)
 clf.fit(X_train, y_train)
 pname = 'Classifiers/'+version + '_classifier.pickle'
 with open(pname,'wb') as f:
@@ -88,6 +88,29 @@ with open(pname,'wb') as f:
 
 
 accuracy = clf.score(X_test,y_test)
+
+
+
+correctbuy = 0
+buymiss = 0
+wrongbuy = 0
+
+for x in range(1,len(X_test)):
+	temp = X_test[-x]
+	temp = np.array(temp).reshape((1, -1))
+	if clf.predict(temp)[0] == 1 or y_test[-x]==1 :
+		if y_test[-x]==1 and  clf.predict(temp)[0] == 1:
+			correctbuy = correctbuy + 1
+		elif y_test[-x]==1 and  clf.predict(temp)[0] == 0:
+			buymiss = buymiss +1
+		elif y_test[-x]==0 and  clf.predict(temp)[0] == 1:
+			wrongbuy = wrongbuy +1
+	diff = y_test[-x] - clf.predict(temp)[0]
+
+print ('Wrongbuy',wrongbuy)
+print ('buymiss',buymiss)
+print ('Correctbuy',correctbuy)
+
 print ('Accuracy', accuracy)
 print ('Length of Dataset',len(dfc))
 print ('Time in Dataset',len(dfc)/12/60,'hours')

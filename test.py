@@ -1,40 +1,35 @@
-from sklearn import svm,preprocessing
-from pandas import *
-import pandas as pd
 import numpy as np
-from numpy import array
-import glob, os
+import time, json, requests, csv, datetime
+from time import strftime
 
-version = 'v2'
+errors = 0
+x= 0
 
-directory = 'C:\\Code\\btc\\Trader\\Data\\'
-'''
-Use prices.csv when ready
-'''
-'''
-os.remove(directory+version+"_total.csv")
+def okcoin():
+    okprice = requests.get('https://www.okcoin.com/api/v1/ticker.do?symbol=btc_usd')
+    okcny = requests.get('https://www.okcoin.com/api/v1/ticker.do?symbol=btc_cny')
+    return okprice.json()['ticker']['buy'],okprice.json()['ticker']['sell'],okcny.json()['ticker']['last']
 
-os.chdir(directory)
-fout=open(directory+version+"_total.csv","a")
-for file in glob.glob(version+"_*.csv"):
-    for line in open(file,'r'):
-         fout.write(line) 
-fout.close()
+def okcoin2():
+    okdepth = requests.get('https://www.okcoin.com/api/v1/depth.do?symbol=btc_usd')
+    qa = 0
+    qb = 0
+    for i in okdepth.json()['asks']:
+        if abs(okdepth.json()['asks'][0][0] - i[0]) <= 1:
+            qa = qa + i[1]
+        else:
+            break
+    for i in okdepth.json()['bids']:
+        if abs(okdepth.json()['bids'][0][0] - i[0]) <= 1:
+            qb = qb + i[1]
+        else:
+            break
+    return qb,qa
 
-command = "copy "+directory+version+"_*.csv "+directory+version+"_total.csv"
-print (command)
-os.system(command)
-'''
-numby= 0 
-frames = []
-os.chdir(directory)
-for file in glob.glob(version+"_*.csv"):
-    numby = numby +1
-    dfname='df_'+str(numby)
-    dfname = pd.DataFrame.from_csv(file)
-    frames.append(dfname)
-    print(file)
 
-data_dfc=pd.concat(frames)
 
-print (data_dfc.head())
+okbuy,oksell,okcny = okcoin()
+okbdepth,okadepth = okcoin2()
+print ('buy',okbuy,'//sell',oksell,'//cny',okcny)
+print(okbdepth)
+print(okadepth)

@@ -15,7 +15,7 @@ import pandas as pd
 import numpy as np
 from numpy import array
 import os,glob
-import stored
+from stored import *
 
 version = 'v2'
 
@@ -31,25 +31,25 @@ classified =version+"_total.csv"
 quantity = 10
 control = 500 * quantity #this is the btc price to calculate profits in terms of dollars
 
-numby= 0 
-frames = []
+numby= 0
+nlen = 0
 os.chdir(directory)
 for file in glob.glob(version+"_*.csv"):
     numby = numby +1
     dfname='df_'+str(numby)
     dfname = pd.DataFrame.from_csv(file)
-    if numby > 1:
-    	dfone.append(dfname,ignore_index=True)
-    else:
+    nlen = nlen + len(dfname.index)
+    if numby == 1:
     	dfone = dfname
-    frames.append(dfname)
-    print(file)
-
-
-data_df=dfone
-
-
-data_dfc = data_df.replace("NaN",0).replace("N/A",0)
+    	print('Base:',file)
+    else:
+    	dfone = dfone.append(dfname,ignore_index=True)
+    	print (len(dfone.index))
+    	print ('Appended:',file)
+    	
+    
+print (len(dfone.index))
+data_dfc = dfone.replace("NaN",0).replace("N/A",0)
 
 def preprocess(data):
 	data_dfc = data
@@ -66,11 +66,12 @@ def preprocess(data):
 	data_dfc['btce_take'] = data_dfc.apply(lambda x : 0 if  x['btce_time_prof'] <= 0 else 1,axis = 1)
 	profit_opps = data_dfc['k_take'].sum(axis=0)
 	return data_dfc,profit_opps
-time_lag = 1
+time_lag = 0
 px = 0 
-while (px < 4) and (time_lag < 10):
-	data_dfc,px = preprocess(data_dfc)
+while (px < numby * 20) and (time_lag < 1):
 	time_lag= time_lag+1
+	data_dfc,px = preprocess(data_dfc)
+	
 
 
 data_dfc = data_dfc.replace("NaN",0).replace("N/A",0)
@@ -103,5 +104,7 @@ data_dfc['sp_btce_profit'] = data_dfc['btce_spread'] * quantity - (.0032 * quant
 
 print (data_dfc.head())
 print ('TL=',time_lag,'profit opps=',px)
+print ('Input length:',nlen)
+print ('Output length:', len(data_dfc.index))
 data_dfc.to_csv(directory+'p_'+classified)
 

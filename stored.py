@@ -28,6 +28,29 @@ def btceDepth(info):
     return quantity
 
 
+
+
+def okcoin():
+    okprice = requests.get('https://www.okcoin.com/api/v1/ticker.do?symbol=btc_usd')
+    okcny = requests.get('https://www.okcoin.com/api/v1/ticker.do?symbol=btc_cny')
+    return okprice.json()['ticker']['buy'],okprice.json()['ticker']['sell'],okcny.json()['ticker']['last']
+
+def okcoin2():
+    okdepth = requests.get('https://www.okcoin.com/api/v1/depth.do?symbol=btc_usd')
+    qa = 0
+    qb = 0
+    for i in okdepth.json()['asks']:
+        if abs(okdepth.json()['asks'][0][0] - i[0]) <= 1:
+            qa = qa + i[1]
+        else:
+            break
+    for i in okdepth.json()['bids']:
+        if abs(okdepth.json()['bids'][0][0] - i[0]) <= 1:
+            qb = qb + i[1]
+        else:
+            break
+    return qb,qa
+
 def kraken():
     krakenTick = requests.post('https://api.kraken.com/0/public/Depth',data=json.dumps({"pair":"XETHXXBT"}),
     headers={"content-type":"application/json"})
@@ -62,7 +85,6 @@ def toshi_ut():
 
 def get_data():
 	global x
-	x = x + 1
 	btce_ETH_buy = float(btceBU('buy'))
 	btce_ETH_sell = float(btceBU('sell'))
 	btce_ETH_depth_bid = float(btceDepth('bids'))
@@ -74,16 +96,25 @@ def get_data():
 	k_bid_vol = float(k_data['bids'][0][1])
 	k_ask_vol= float(k_data['asks'][0][1])
 	uc_trans = float(toshi_ut())
-	return x,btce_ETH_buy,btce_ETH_sell,btce_ETH_depth_bid,btce_ETH_depth_ask,krakenETH_bid,krakenETH_ask,k_time,k_bid_vol,k_ask_vol,uc_trans
+	okbuy,oksell,okcny = okcoin()
+	okbdepth,okadepth = okcoin2()
+	return btce_ETH_buy,btce_ETH_sell,btce_ETH_depth_bid,btce_ETH_depth_ask,krakenETH_bid,krakenETH_ask,k_time,k_bid_vol,k_ask_vol,uc_trans,okbuy,oksell,okcny,okadepth,okbdepth
 
 def preprocess_act(data):
-	data_dfc = data
-	data_dfc['btce_spread'] = data_dfc['btce_ETH_buy'] - data_dfc['btce_ETH_sell']
-	data_dfc['k_spread'] = data_dfc['k_ask'] - data_dfc['K_bid']
-	data_dfc['delta_btce_ask'] = data_dfc['btce_ETH_buy'] - data_dfc['btce_ETH_buy'].shift(1)
-	data_dfc['delta_btce_bid'] = data_dfc['btce_ETH_sell'] - data_dfc['btce_ETH_sell'].shift(1)
-	data_dfc['delta_k_ask'] = data_dfc['k_ask'] - data_dfc['k_ask'].shift(1)
-	data_dfc['delta_k_bid'] = data_dfc['K_bid'] - data_dfc['K_bid'].shift(1)
-	data_dfc['delta_uc_trans'] = data_dfc['uc_trans'] - data_dfc['uc_trans'].shift(1)
-	data_dfc['k_take']=0
+	df = data
+	df['btce_spread'] = df['btce_ETH_buy'] - df['btce_ETH_sell']
+	df['k_spread'] = df['k_ask'] - df['K_bid']
+	df['delta_btce_ask'] = df['btce_ETH_buy'] - df['btce_ETH_buy'].shift(1)
+	df['delta_btce_bid'] = df['btce_ETH_sell'] - df['btce_ETH_sell'].shift(1)
+	df['delta_k_ask'] = df['k_ask'] - df['k_ask'].shift(1)
+	df['delta_k_bid'] = df['K_bid'] - df['K_bid'].shift(1)
+	df['delta_uc_trans'] = df['uc_trans'] - df['uc_trans'].shift(1)
+	df['okc_spread'] = df['okbuy']-df['oksell']
+	df['delta_okc_bid'] = df['oksell']-df['oksell'].shift(1)
+	df['delta_okc_ask'] = df['okbuy'] - df['okbuy'].shift(1)
+	df['delta_okcbdepth'] = df['okbdeth'] = df['okbdeth'].shift(1)
+	df['delta_okcadepth'] = df['okadepth'] - df['okadepth'].shift(1)
+	df['delta_kbvol'] = df['k_bid_vol']-df['k_bid_vol'].shift(1)
+	df['delta_kavol'] = df['k_ask_vol']-df['k_ask_vol'].shift(1)
+	df['k_take']=0
 	return data_dfc

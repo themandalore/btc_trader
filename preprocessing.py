@@ -17,7 +17,7 @@ from numpy import array
 import os,glob
 from stored import *
 
-version = 'v2'
+version = 'v3'
 
 directory = 'C:\\Code\\btc\\Trader\\Data\\'
 '''
@@ -31,53 +31,71 @@ classified =version+"_total.csv"
 quantity = 10
 control = 500 * quantity #this is the btc price to calculate profits in terms of dollars
 
+def preprocess(data):
+	df = data
+	df['btce_spread'] = df['btce_ETH_buy'] - df['btce_ETH_sell']
+	df['k_spread'] = df['k_ask'] - df['K_bid']
+	df['delta_btce_ask'] = df['btce_ETH_buy'] - df['btce_ETH_buy'].shift(1)
+	df['delta_btce_bid'] = df['btce_ETH_sell'] - df['btce_ETH_sell'].shift(1)
+	df['delta_k_ask'] = df['k_ask'] - df['k_ask'].shift(1)
+	df['delta_k_bid'] = df['K_bid'] - df['K_bid'].shift(1)
+	df['delta_uc_trans'] = df['uc_trans'] - df['uc_trans'].shift(1)
+	df['k_time_prof'] = control * (df['K_bid'].shift(-1)-1.0016 * df['k_ask'] -.0016*df['K_bid'].shift(-1))
+	df['btce_time_prof'] =control * ( df['btce_ETH_sell'].shift(-1)-1.002 * df['btce_ETH_buy']-.002*df['btce_ETH_sell'].shift(-1))
+	df['k_take'] = df.apply(lambda x : 0 if  x['k_time_prof'] <= 0 else 1,axis = 1)
+	df['btce_take'] = df.apply(lambda x : 0 if  x['btce_time_prof'] <= 0 else 1,axis = 1)
+	profit_opps = df['k_take'].sum(axis=0)
+	df['okc_spread'] = df['okbuy']-df['oksell']
+	df['delta_okc_bid'] = df['oksell']-df['oksell'].shift(1)
+	df['delta_okc_ask'] = df['okbuy'] - df['okbuy'].shift(1)
+	df['delta_okcbdepth'] = df['okbdepth'] = df['okbdepth'].shift(1)
+	df['delta_okcadepth'] = df['okadepth'] - df['okadepth'].shift(1)
+	df['delta_kbvol'] = df['k_bid_vol']-df['k_bid_vol'].shift(1)
+	df['delta_kavol'] = df['k_ask_vol']-df['k_ask_vol'].shift(1)
+	df['kprice_ma'] = pd.rolling_mean(df['k_ask'],5)
+	df['ma_diff5'] = df['kprice_ma']-df['k_ask']
+	df['kprice_ma2'] = pd.rolling_mean(df['k_ask'],20)
+	df['ma_diff20'] = df['kprice_ma']-df['k_ask']
+	
+	return df,profit_opps
 numby= 0
+px = 0
 nlen = 0
 os.chdir(directory)
 for file in glob.glob(version+"_*.csv"):
     numby = numby +1
     dfname='df_'+str(numby)
     dfname = pd.DataFrame.from_csv(file)
+    dfname,px1 = preprocess(dfname)
+    px = px1 + px
     nlen = nlen + len(dfname.index)
     if numby == 1:
     	dfone = dfname
     	print('Base:',file)
     else:
     	dfone = dfone.append(dfname,ignore_index=True)
+    	print (len(dfname.index))
     	print (len(dfone.index))
     	print ('Appended:',file)
     	
-    
+dfone.to_csv(directory+'total_'+classified)
 print (len(dfone.index))
-data_dfc = dfone.replace("NaN",0).replace("N/A",0)
-
-def preprocess(data):
-	data_dfc = data
-	data_dfc['btce_spread'] = data_dfc['btce_ETH_buy'] - data_dfc['btce_ETH_sell']
-	data_dfc['k_spread'] = data_dfc['k_ask'] - data_dfc['K_bid']
-	data_dfc['delta_btce_ask'] = data_dfc['btce_ETH_buy'] - data_dfc['btce_ETH_buy'].shift(1)
-	data_dfc['delta_btce_bid'] = data_dfc['btce_ETH_sell'] - data_dfc['btce_ETH_sell'].shift(1)
-	data_dfc['delta_k_ask'] = data_dfc['k_ask'] - data_dfc['k_ask'].shift(1)
-	data_dfc['delta_k_bid'] = data_dfc['K_bid'] - data_dfc['K_bid'].shift(1)
-	data_dfc['delta_uc_trans'] = data_dfc['uc_trans'] - data_dfc['uc_trans'].shift(1)
-	data_dfc['k_time_prof'] = control * (data_dfc['K_bid'].shift(-time_lag)-1.0016 * data_dfc['k_ask'] -.0016*data_dfc['K_bid'].shift(-time_lag))
-	data_dfc['btce_time_prof'] =control * ( data_dfc['btce_ETH_sell'].shift(-time_lag)-1.002 * data_dfc['btce_ETH_buy']-.002*data_dfc['btce_ETH_sell'].shift(-time_lag))
-	data_dfc['k_take'] = data_dfc.apply(lambda x : 0 if  x['k_time_prof'] <= 0 else 1,axis = 1)
-	data_dfc['btce_take'] = data_dfc.apply(lambda x : 0 if  x['btce_time_prof'] <= 0 else 1,axis = 1)
-	profit_opps = data_dfc['k_take'].sum(axis=0)
-	return data_dfc,profit_opps
-time_lag = 0
-px = 0 
-while (px < numby * 20) and (time_lag < 1):
-	time_lag= time_lag+1
-	data_dfc,px = preprocess(data_dfc)
-	
+dfone['k_time2'] = pd.to_datetime(dfone['k_time'])
+dfone['timechange']=dfone['k_time2'] - dfone['k_time2'].shift(1)
+print (dfone.head())
+dfone = dfone.drop(dfone[dfone['timechange'] > Timedelta('0 days 00:02:00')].index)
+dfone = dfone.drop(dfone[dfone['timechange'] < Timedelta('0 days 00:00:01')].index)
+dfone = dfone.drop(dfone[dfone['ma_diff20'] == 0].index)
+df=dfone.drop('k_time',1)
+df=df.drop('timechange',1)
+df=df.drop('k_time2',1)
+df =df.dropna()
+df = df.replace("NaN",-99999).replace("N/A",-99999).replace('NaT',-999999)
 
 
-data_dfc = data_dfc.replace("NaN",0).replace("N/A",0)
-data_dfc = data_dfc[1:-1]
-data_dfc = data_dfc.reset_index()
-
+data_dfc = df.reset_index()
+print (data_dfc.head())
+print (len(data_dfc.index))
 
 '''
 Buy lowest, sell highest exchange
@@ -103,7 +121,7 @@ data_dfc['sp_btce_profit'] = data_dfc['btce_spread'] * quantity - (.0032 * quant
 
 
 print (data_dfc.head())
-print ('TL=',time_lag,'profit opps=',px)
+print ('profit opps =',px)
 print ('Input length:',nlen)
 print ('Output length:', len(data_dfc.index))
 data_dfc.to_csv(directory+'p_'+classified)

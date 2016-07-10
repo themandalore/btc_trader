@@ -33,8 +33,9 @@ import numpy as np
 import math
 from numpy import array
 import pickle
-
-version = 'v2'
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
+version = 'v3'
 
 features = ["btce_spread",
 			"k_spread",
@@ -42,7 +43,16 @@ features = ["btce_spread",
 			"delta_btce_bid",
 			"delta_k_ask",
 			"delta_k_bid",
-			"delta_uc_trans"
+			"delta_uc_trans",
+			"okc_spread",
+			"delta_okc_bid",
+			"delta_okc_ask",
+			"delta_okcbdepth",
+			"delta_okcadepth",
+			"delta_kbvol",
+			"delta_kavol",
+			"ma_diff5",
+			"ma_diff20"
            ]
             
 directory = 'C:\\Code\\btc\\Trader\\Data\\'
@@ -71,7 +81,6 @@ dfc.fillna(value=-99999, inplace=True)
 forecast_out = int(math.ceil(0.01 * len(dfc)))
 dfx = dfc[features]
 X = np.array(dfx)
-dfc.dropna(inplace=True)
 y = np.array(dfc[to_predict])
 
 
@@ -79,9 +88,45 @@ X_train, X_test, y_train, y_test = cross_validation.train_test_split(X,y,test_si
 
 
 #print (data_df.describe())
+# run randomized search
+test_size=np.shape(X_test)[0]
+print (test_size)
+numbers = (.1,.5,1,5,10)
+gammas = (.01,.05,.2,.5,1,3)
+max_g=0
+maxxy=0
+for i in gammas:
+    rbf_svc = svm.SVC(kernel='rbf', gamma=i, C=1).fit(X_train, y_train)
+    correct_count=0
+    for x in range(1, test_size+1):
+        if (rbf_svc.predict(X_test[-x])[0] - y_test[-x]) == 0:
+            #print (X[-x],y[-x], clf.predict(X[-x])[0])
+            #print (clf.predict(X[-x])[0] - y[-x])
+            correct_count = correct_count + 1
+            #print (correct_count, test_size)
+    print("G- " ,i, ":" ,(correct_count*100/test_size))
+    if correct_count > maxxy:
+        maxxy=correct_count
+        max_g=i
+print (max_g)
+max_c=0
+maxxy=0
+for i in numbers:
+    svc = svm.SVC(kernel='linear', C=i).fit(X_train, y_train)
+    correct_count=0
+    for x in range(1, test_size+1):
+        if (svc.predict(X_test[-x])[0] - y_test[-x]) == 0:
+            #print (X[-x],y[-x], clf.predict(X[-x])[0])
+            #print (clf.predict(X[-x])[0] - y[-x])
+            correct_count = correct_count + 1
+            #print (correct_count, test_size)
+    print("C- " ,i, ":" ,(correct_count*100/test_size))
+    if correct_count > maxxy:
+        maxxy=correct_count
+        max_c=i
+print (max_c)
+clf= svm.SVC(kernel='linear', C=max_c).fit(X_train, y_train)
 
-clf = svm.LinearSVC(C=1)
-clf.fit(X_train, y_train)
 pname = 'Classifiers/'+version + '_classifier.pickle'
 with open(pname,'wb') as f:
 	pickle.dump(clf,f)

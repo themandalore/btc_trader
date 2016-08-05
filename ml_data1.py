@@ -34,27 +34,13 @@ import math
 from numpy import array
 import pickle
 import warnings
+from stored import *
 warnings.filterwarnings("ignore", category=DeprecationWarning) 
-version = 'v3'
+version = 'v4'
 
-features = ["btce_spread",
-			"k_spread",
-			"delta_btce_ask",
-			"delta_btce_bid",
-			"delta_k_ask",
-			"delta_k_bid",
-			"delta_uc_trans",
-			"okc_spread",
-			"delta_okc_bid",
-			"delta_okc_ask",
-			"delta_okcbdepth",
-			"delta_okcadepth",
-			"delta_kbvol",
-			"delta_kavol",
-			"ma_diff5",
-			"ma_diff20"
-           ]
-            
+exchange = 'kraken' #kraken or btce
+
+
 directory = 'C:\\Code\\btc\\Trader\\Data\\'
 '''
 Use prices.csv when ready
@@ -68,8 +54,12 @@ Use prices.csv when ready
 classified = 'p_'+version + '_total.csv'
 
 #to_predict =  ['k_take', 'k_take2','k_take3','btce_take','btce_take2','btce_take3']
-to_predict = 'k_take'
-prof_pred = 'k_time_prof'
+if exchange == 'kraken':
+	to_predict = 'k_take'
+	prof_pred = 'k_time_prof'
+elif exchange == 'btce':
+	to_predict = 'btce_take'
+	prof_pred = 'btce_time_prof' 
 cols = np.array(features)
 cols = np.append(cols,to_predict)
 data_dfi = pd.DataFrame.from_csv(directory + classified)
@@ -84,7 +74,7 @@ X = np.array(dfx)
 y = np.array(dfc[to_predict])
 
 
-X_train, X_test, y_train, y_test = cross_validation.train_test_split(X,y,test_size = .2)
+X_train, X_test, y_train, y_test = cross_validation.train_test_split(X,y,test_size = .3)
 
 
 #print (data_df.describe())
@@ -92,7 +82,7 @@ X_train, X_test, y_train, y_test = cross_validation.train_test_split(X,y,test_si
 test_size=np.shape(X_test)[0]
 print (test_size)
 numbers = (.1,.5,1,5,10)
-gammas = (.01,.05,.2,.5,1,3)
+gammas = (.01,.05,.2,.5,1,3,5)
 max_g=0
 maxxy=0
 for i in gammas:
@@ -112,7 +102,7 @@ print (max_g)
 max_c=0
 maxxy=0
 for i in numbers:
-    svc = svm.SVC(kernel='linear', C=i).fit(X_train, y_train)
+    svc = svm.SVC(kernel='rbf', gamma=max_g, C=i).fit(X_train, y_train)
     correct_count=0
     for x in range(1, test_size+1):
         if (svc.predict(X_test[-x])[0] - y_test[-x]) == 0:
@@ -125,9 +115,9 @@ for i in numbers:
         maxxy=correct_count
         max_c=i
 print (max_c)
-clf= svm.SVC(kernel='linear', C=max_c).fit(X_train, y_train)
+clf= svm.SVC(kernel='rbf', gamma=max_g, C=max_c).fit(X_train, y_train)
 
-pname = 'Classifiers/'+version + '_classifier.pickle'
+pname = 'Classifiers/'+version + '_'+exchange+'_classifier.pickle'
 with open(pname,'wb') as f:
 	pickle.dump(clf,f)
 
@@ -155,12 +145,14 @@ for x in range(1,len(X_test)):
 print ('Wrongbuy',wrongbuy)
 print ('buymiss',buymiss)
 print ('Correctbuy',correctbuy)
+if buymiss == 0:
+	buymiss ==1
 
 print ('Accuracy', accuracy)
 print ('Length of Dataset',len(dfc))
-print ('Time in Dataset',len(dfc)/12/60,'hours')
+print ('Time in Dataset',len(dfc)/60,'hours')
 print ('Number of Opportunities',data_df[data_df[to_predict]>0].count()[to_predict])
-print ('Expected Profit: ', accuracy * (data_dfi[data_dfi[prof_pred]>0].sum()[prof_pred]))
+print ('Expected Profit: ', ((correctbuy)/(correctbuy+wrongbuy+buymiss)) * (data_dfi[data_dfi[prof_pred]>0].sum()[prof_pred]))
 
 #this treats each row as a day and pushes it back for graphing purposes
 '''
@@ -168,7 +160,7 @@ lin_svc = svm.LinearSVC(C=1).fit(X,y)
 a = lin_svc.predict(XX)
 ndarr = np.asarray(a) # if ndarr is actually an array, skip this
 fast_df = pd.DataFrame({"new_type": ndarr.ravel()})
-a.tolist()
+a.tolist()b
 data_dfm['new_type'] =  fast_df['new_type']
 data_dfm.to_csv('final_learned.csv')
 '''

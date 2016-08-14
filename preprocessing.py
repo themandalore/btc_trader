@@ -17,8 +17,8 @@ from numpy import array
 import os,glob
 from stored import *
 
-version = 'v4'
-inc_vers = ('v4','v3')
+version = 'v5'
+inc_vers = ('v5','v4','v3')
 
 directory = 'C:\\Code\\btc\\Trader\\Data\\'
 '''
@@ -26,6 +26,7 @@ Use prices.csv when ready
 '''
 
 classified =version+"_total.csv"
+exchange = 'kraken'
 
 numby= 0
 px = 0
@@ -37,7 +38,11 @@ for v in inc_vers:
 			numby = numby +1
 			dfname='df_'+str(numby)
 			dfname = pd.DataFrame.from_csv(file)
-			dfname,px1 = preprocess(dfname)
+			dfname,kpx,cbpx = preprocess(dfname)
+			if exchange =='kraken':
+				px1=kpx
+			elif exchange=='coinbase':
+				px1=cbpx
 			px = px1 + px
 			nlen = nlen + len(dfname.index)
 			if numby == 1:
@@ -56,19 +61,19 @@ dfone.to_csv(directory+'total_'+classified)
 print (len(dfone.index))
 dfone['k_time2'] = pd.to_datetime(dfone['k_time'])
 dfone['timechange']=dfone['k_time2'] - dfone['k_time2'].shift(1)
-print (dfone.head())
+#print (dfone.head())
 dfone = dfone.drop(dfone[dfone['timechange'] > Timedelta('0 days 00:02:00')].index)
 dfone = dfone.drop(dfone[dfone['timechange'] < Timedelta('0 days 00:00:01')].index)
 dfone = dfone.drop(dfone[dfone['ma_diff20'] == 0].index)
 df=dfone.drop('k_time',1)
 df=df.drop('timechange',1)
-df=df.drop('k_time2',1)
-df = df.replace("NaN",-99999).replace("N/A",-99999).replace('NaT',-999999)
+#df=df.drop('k_time2',1)
+#df = df.replace("NaN",-99999).replace("N/A",-99999).replace('NaT',-999999)
 
 
-data_dfc = df.reset_index()
-print (data_dfc.head())
-print (len(data_dfc.index))
+#data_dfc = df.reset_index()
+print (df.head())
+print (len(df.index))
 
 '''
 Buy lowest, sell highest exchange
@@ -88,14 +93,14 @@ data_dfc['action'] = data_dfc.apply(lambda x : 'None' if  x['cx_profit'] <= 0 el
 
 '''
 Capture Spread on exchange
-'''
+
 data_dfc['sp_k_profit'] = data_dfc['k_spread'] * quantity - (.0032 * quantity * data_dfc['k_spread'] )
 data_dfc['sp_btce_profit'] = data_dfc['btce_spread'] * quantity - (.0032 * quantity * data_dfc['btce_spread'] )
+'''
 
-
-print (data_dfc.head())
+print (df.head())
 print ('profit opps =',px)
 print ('Input length:',nlen)
-print ('Output length:', len(data_dfc.index))
-data_dfc.to_csv(directory+'p_'+classified)
+print ('Output length:', len(df.index))
+df.to_csv(directory+'p_'+classified)
 

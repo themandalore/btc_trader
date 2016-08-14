@@ -18,6 +18,7 @@ features = ["btce_spread",
 			"okc_spread",
 			"delta_okc_bid",
 			"delta_okc_ask",
+			"k_gradient_diff",
 			#"delta_okcbdepth",
 			#"delta_okcadepth",
 			"delta_kbvol",
@@ -27,17 +28,44 @@ features = ["btce_spread",
 			#'ok_btce_diff',
 			#'ok_k_diff',
 			'k_imbalance',
-			'k_gradient_diff'
+			'cb_adj_imb',
+			'cb_spread',
+			'cbma_diff5',
+			'cbma_diff20',
+			'okc_cb_diff',
+			'delta_cb_spread',
+			'cb_k_diff',
+			'cb_btce_diff',
+			]
 
-           ]
             
+good_feats = ['ma_diff20', 'ma_diff5', 'k_spread', 'delta_kavol', 'delta_kbvol', 'delta_btce_bid', 'delta_okc_ask', 'delta_k_ask', 'k_imbalance', 'btce_spread', 'okc_spread', 'delta_okc_bid', 'delta_btce_ask', 'delta_uc_trans', 'k_btce_diff']
+
 errors = 0
 x= 0
-print ('t')
-def gdax(info):
-	x =PublicClient.getProducts()
-	print (x)
+def gdax():
+	USD = PublicClient.getProductTicker(product="BTC-USD")['price']
+	ticker = PublicClient.getProductTicker(product='ETH-BTC')
+	bid=ticker['bid']
+	ask = ticker['bid']
+	Book = PublicClient.getProductOrderBook(level=2, product='ETH-BTC')
+	b_depth=0
+	a_depth=0
+	a_grade=0
+	b_grade=0
+	for i in Book['asks']:
+		a_depth = a_depth + float(i[1])
+		a_grade= a_grade + float(i[0])*float(i[1])
+	for i in Book['bids']:
+		b_depth= b_depth + float(i[1])
+		b_grade= b_grade + float(i[0])*float(i[1])
+	adj_imb = a_grade/b_grade
+	return USD, bid, ask,b_depth,a_depth,adj_imb
 
+'''
+Get bid/ask , depth (imbalance/ gradients), USD price (for OKC comp)
+Then build trading mechanisms
+'''
 
 
 def btceBU(info):
@@ -75,7 +103,7 @@ def okcoin():
 		return -999999,-99999
 def okcoin2():
 	try:
-		okdepth = requests.get('https://www.okcoin.com/api/v1/depth.do?symbol=btc_usd',timeout=(3, 10))
+		okdepth = requests.get('https://www.okcoin.com/api/v1/depth.do?symbol=btc_usd',timeout=(1, 1))
 		a = 0
 		qb = 0
 		for i in okdepth.json()['asks']:
@@ -129,6 +157,13 @@ def toshi_ut():
 def get_data():
 	global x
 	global errors
+	USD, bid, ask,b_depth,a_depth,adj_imb = gdax()
+	cb_USD = float(USD)
+	cb_bid = float(bid)
+	cb_ask = float (ask)
+	cb_bdepth=float(b_depth)
+	cb_adepth = float(a_depth)
+	cb_adj_imb = float(adj_imb)
 	btce_ETH_buy = float(btceBU('buy'))
 	btce_ETH_sell = float(btceBU('sell'))
 	btce_ETH_depth_bid = float(btceDepth('bids'))
@@ -190,10 +225,11 @@ def get_data():
 		errors = errors + 1
 		okbuy,oksell,okcny = -99999999,-99999999,-99999999
 	okbdepth,okadepth = okcoin2()
-	return btce_ETH_buy,btce_ETH_sell,btce_ETH_depth_bid,btce_ETH_depth_ask,krakenETH_bid,krakenETH_ask,k_time,k_bid_vol,k_ask_vol,k_a_gradient,k_b_gradient,uc_trans,okbuy,oksell,okcny,okadepth,okbdepth
+	return btce_ETH_buy,btce_ETH_sell,btce_ETH_depth_bid,btce_ETH_depth_ask,krakenETH_bid,krakenETH_ask,k_time,k_bid_vol,k_ask_vol,k_a_gradient,k_b_gradient,uc_trans,okbuy,oksell,okcny,okadepth,okbdepth,cb_USD,cb_bid,cb_ask,cb_bdepth,cb_adepth,cb_adj_imb
 
 def preprocess_act(data):
 	df = data
+	#print (df.head())
 	df['btce_spread'] = df['btce_ETH_buy'] - df['btce_ETH_sell']
 	df['k_spread'] = df['k_ask'] - df['K_bid']
 	df['k_btce_diff'] = df['btce_ETH_sell'] - df['K_bid']
@@ -212,48 +248,53 @@ def preprocess_act(data):
 	df['delta_kbvol'] = df['k_bid_vol']-df['k_bid_vol'].shift(1)
 	df['delta_kavol'] = df['k_ask_vol']-df['k_ask_vol'].shift(1)
 	df['k_imbalance']=df['k_ask_vol']-df['k_bid_vol']
-	df['k_gradient_diff']=df['k_a_gradient']/df['k_b_gradient']
+	try:
+		df['k_gradient_diff']=df['k_a_gradient']/df['k_b_gradient']
+	except:
+		df['k_gradient_diff']=1
 	df['kprice_ma'] = pd.rolling_mean(df['k_ask'],5)
 	df['ma_diff5'] = df['kprice_ma']-df['k_ask']
 	df['kprice_ma2'] = pd.rolling_mean(df['k_ask'],20)
 	df['ma_diff20'] = df['kprice_ma']-df['k_ask']
 	df['k_take']=0
+	df['cb_take']=0
+	try:
+		df['cb_spread']=df['cb_ask']-df['cb_bid']
+		df['okc_cb_diff']=df['cb_USD']-df['okc_ask']
+		df['cbprice_ma'] = pd.rolling_mean(df['cb_ask'],5)
+		df['cbma_diff5'] = df['cbprice_ma']-df['cb_ask']
+		df['cbprice_ma2'] = pd.rolling_mean(df['cb_ask'],20)
+		df['cbma_diff20'] = df['cbprice_ma']-df['cb_ask']
+		df['delta_cb_spread']=df['cb_spread'] - df['cb_spread'].shift(1)
+		df['cb_k_diff']=df['cb_ask']-df['k_ask']
+		df['cb_btce_diff']=df['cb_ask']-df['btce_ETH_sell']
+	except:
+		df['cb_spread']=df['k_spread']
+		df['okc_cb_diff']=0
+		df['cbprice_ma'] = 0
+		df['cbma_diff5'] = 0
+		df['cbprice_ma2'] = 0
+		df['cbma_diff20'] = 0
+		df['delta_cb_spread']=0
+		df['cb_k_diff']=0
+		df['cb_btce_diff']=0
+		df['cb_bid']=0
+		df['cb_ask']=0
+		df['cb_adj_imb']=0
+		df['cb_USD']=-999999
 	return df
 
 quantity = 10
 control = 500 * quantity 
 
 def preprocess(data):
-	df = data
-	df['btce_spread'] = df['btce_ETH_buy'] - df['btce_ETH_sell']
-	df['k_btce_diff'] = df['btce_ETH_sell'] - df['K_bid']
-	df['ok_k_diff']=df['K_bid']-df['oksell']
-	df['ok_btce_diff']=df['btce_ETH_sell']-df['oksell']
-	df['k_spread'] = df['k_ask'] - df['K_bid']
-	df['delta_btce_ask'] = df['btce_ETH_buy'] - df['btce_ETH_buy'].shift(1)
-	df['delta_btce_bid'] = df['btce_ETH_sell'] - df['btce_ETH_sell'].shift(1)
-	df['delta_k_ask'] = df['k_ask'] - df['k_ask'].shift(1)
-	df['delta_k_bid'] = df['K_bid'] - df['K_bid'].shift(1)
-	df['delta_uc_trans'] = df['uc_trans'] - df['uc_trans'].shift(1)
+	df = preprocess_act(data)
 	df['k_time_prof'] = control * (df['K_bid'].shift(-1)-1.0016 * df['k_ask'] -.0016*df['K_bid'].shift(-1))
 	df['btce_time_prof'] =control * ( df['btce_ETH_sell'].shift(-1)-1.002 * df['btce_ETH_buy']-.002*df['btce_ETH_sell'].shift(-1))
 	df['k_take'] = df.apply(lambda x : 0 if  x['k_time_prof'] <= 0 else 1,axis = 1)
 	df['btce_take'] = df.apply(lambda x : 0 if  x['btce_time_prof'] <= 0 else 1,axis = 1)
-	profit_opps = df['k_take'].sum(axis=0)
-	df['okc_spread'] = df['okbuy']-df['oksell']
-	df['delta_okc_bid'] = df['oksell']-df['oksell'].shift(1)
-	df['delta_okc_ask'] = df['okbuy'] - df['okbuy'].shift(1)
-	df['delta_okcbdepth'] = df['okbdepth'] - df['okbdepth'].shift(1)
-	df['delta_okcadepth'] = df['okadepth'] - df['okadepth'].shift(1)
-	df['delta_kbvol'] = df['k_bid_vol']-df['k_bid_vol'].shift(1)
-	df['delta_kavol'] = df['k_ask_vol']-df['k_ask_vol'].shift(1)
-	df['kprice_ma'] = pd.rolling_mean(df['k_ask'],5)
-	df['ma_diff5'] = df['kprice_ma']-df['k_ask']
-	df['kprice_ma2'] = pd.rolling_mean(df['k_ask'],20)
-	df['ma_diff20'] = df['kprice_ma']-df['k_ask']
-	df['k_imbalance']=df['k_ask_vol']-df['k_bid_vol']
-	try:
-		df['k_gradient_diff']= (df['k_a_gradient']) / (df['k_b_gradient'])
-	except:
-		df['k_gradient_diff'] =  pd.Series(df.index)
-	return df,profit_opps
+	kprofit_opps = df['k_take'].sum(axis=0)
+	df['cb_time_prof']=control * (df['cb_bid'].shift(-1)- df['cb_ask'])
+	df['cb_take']=df.apply(lambda x : 0 if  x['cb_time_prof'] <= 0 else 1,axis = 1)
+	cbprofit_opps=df['cb_take'].sum(axis=0)
+	return df,kprofit_opps,cbprofit_opps

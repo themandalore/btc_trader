@@ -19,20 +19,21 @@ Keep track of all open orders, positions, and expected/ actual profits
 TRADE = False
 PREDICT = False
 breaker = 0
+exchange = 'kraken'
 while True:
 	date = strftime("%Y-%m-%d")
-	version = 'v4'
+	version = 'v5'
 	imp = version + '_data'
 	import imp
 	#This gets API data
 
-	titles =  ('obs','btce_ETH_buy','btce_ETH_sell','btce_ETH_depth_bid','btce_ETH_depth_ask','K_bid','k_ask','k_time','k_bid_vol','k_ask_vol','k_a_gradient','k_b_gradient','uc_trans','okbuy','oksell','okcny','okadepth','okbdepth')
+	titles =  ('obs','btce_ETH_buy','btce_ETH_sell','btce_ETH_depth_bid','btce_ETH_depth_ask','K_bid','k_ask','k_time','k_bid_vol','k_ask_vol','k_a_gradient','k_b_gradient','uc_trans','okbuy','oksell','okcny','okadepth','okbdepth','cb_USD','cb_bid','cb_ask','cb_bdepth','cb_adepth','cb_adj_imb')
 	print (titles)
 	x=0
 	#55 works out to about a minute
-	time_lag = 55 
+	time_lag = 54 
 	if PREDICT:
-		pname = version + '_classifier.pickle'
+		pname = version + '_'+exchange+'_classifier.pickle'
 		pickle_in = open('Classifiers/'+ pname,'rb')
 		clf = pickle.load(pickle_in)
 
@@ -49,8 +50,8 @@ while True:
 		global x
 		with open(r'Data/' + version + '_' + date + '.csv', 'a') as f:
 			x=x+1
-			btce_ETH_buy,btce_ETH_sell,btce_ETH_depth_bid,btce_ETH_depth_ask,krakenETH_bid,krakenETH_ask,k_time,k_bid_vol,k_ask_vol,k_a_gradient,k_b_gradient,uc_trans,okbuy,oksell,okcny,okadepth,okbdepth = get_data()
-			outstring = int(x),float(btce_ETH_buy),float(btce_ETH_sell),float(btce_ETH_depth_bid),float(btce_ETH_depth_ask),float(krakenETH_bid),float(krakenETH_ask),k_time,float(k_bid_vol),float(k_ask_vol),float(k_a_gradient),float(k_b_gradient),float(uc_trans),float(okbuy),float(oksell),float(okcny),float(okadepth),float(okbdepth)
+			btce_ETH_buy,btce_ETH_sell,btce_ETH_depth_bid,btce_ETH_depth_ask,krakenETH_bid,krakenETH_ask,k_time,k_bid_vol,k_ask_vol,k_a_gradient,k_b_gradient,uc_trans,okbuy,oksell,okcny,okadepth,okbdepth,cb_USD,cb_bid,cb_ask,cb_bdepth,cb_adepth,cb_adj_imb = get_data()
+			outstring = int(x),float(btce_ETH_buy),float(btce_ETH_sell),float(btce_ETH_depth_bid),float(btce_ETH_depth_ask),float(krakenETH_bid),float(krakenETH_ask),k_time,float(k_bid_vol),float(k_ask_vol),float(k_a_gradient),float(k_b_gradient),float(uc_trans),float(okbuy),float(oksell),float(okcny),float(okadepth),float(okbdepth),float(cb_USD),float(cb_bid),float(cb_ask),float(cb_bdepth),float(cb_adepth),float(cb_adj_imb)
 			k_bid = float(krakenETH_bid)
 			k_ask = float(krakenETH_ask)
 			writer = csv.writer(f)
@@ -59,11 +60,12 @@ while True:
 			return k_bid, k_ask
 			
 	#This pulls in our classifier
-
 	while x < 20:
 		try:
 			k_bid,k_ask = newrow()
 		except:
+			print ('DATA ERROR')
+			breaker=1
 			break
 		time.sleep(time_lag)
 
@@ -75,11 +77,11 @@ while True:
 			break
 		if PREDICT:
 			df = pd.DataFrame.from_csv(name)
-			df = df.replace("NaN",0).replace("N/A",0)
+			df = df.replace("NaN",-99999).replace("N/A",-99999)
 			preprocess_act(df)
 			df = df [1:]
 			df2 = df.tail(1)
-			XX = (array(df2[features].values).tolist())
+			XX = (array(df2[good_feats].values).tolist())
 			a = clf.predict(XX)
 			print (XX)
 			if a[:1] == 0:
@@ -92,14 +94,23 @@ while True:
 			elif a[:1]==1 and TRADE:
 				trades =+ 1
 				print (k_trade_eth('buy','10',k_ask))
-				time.sleep(time_lag-1)
+				time.sleep(time_lag-5)
+				try:
+					newrow()
+				except:
+					pass
 				k_data =  kraken()
 				new_bids= float(k_data['bids'][0][0])
 				print (k_trade_eth('sell','10',new_bids))
-				print ('Exp Profit:',(new_bids-k_ask) * 10)
+				exp_prof = (new_bids-k_ask) * 10
+				print ('Exp Profit:',exp_prof)
 				print(k_balance())
-				breaker = 1
-				break
+				time.sleep(time_lag-5)
+				if exp_prof < 0:
+					breaker = 1
+					break
+				else:
+					pass
 			elif a[:1]==1:
 				print (k_ask)
 				time.sleep(time_lag-1)

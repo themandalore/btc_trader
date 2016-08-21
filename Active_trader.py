@@ -16,10 +16,15 @@ Pull in classifier
 Keep track of all open orders, positions, and expected/ actual profits
 '''
 
-TRADE = False
-PREDICT = False
+TRADE = True
+PREDICT = True
 breaker = 0
 exchange = 'kraken'
+if exchange == 'kraken':
+	good_feats = k_good_feats
+elif exchange == 'coinbase':
+	good_feats = cb_good_feats
+
 while True:
 	date = strftime("%Y-%m-%d")
 	version = 'v5'
@@ -41,9 +46,10 @@ while True:
 	with open(name, 'w') as csvfile:
 		spamwriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
 		spamwriter.writerow(titles)
-
 	try:
-		print('Starting Balance:',k_balance())
+		print('Kraken Starting Balance:',k_balance())
+		print('Coinbase Starting Balance:')
+		print('BTCE Starting Balance:')
 	except:
 		print('Starting Balance: Error')
 	def newrow():
@@ -63,12 +69,10 @@ while True:
 	while x < 20:
 		try:
 			k_bid,k_ask = newrow()
+			time.sleep(time_lag)
 		except:
 			print ('DATA ERROR')
-			breaker=1
-			break
-		time.sleep(time_lag)
-
+			errors += 1
 	trades = 0 
 	while x > 19 :
 		try:
@@ -78,6 +82,7 @@ while True:
 		if PREDICT:
 			df = pd.DataFrame.from_csv(name)
 			df = df.replace("NaN",-99999).replace("N/A",-99999)
+			#df = df.dropna(inplace=True)
 			preprocess_act(df)
 			df = df [1:]
 			df2 = df.tail(1)

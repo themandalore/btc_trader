@@ -67,6 +67,7 @@ elif exchange == 'btce':
 	fee = .002
 elif exchange == 'coinbase':
 	to_predict = 'cb_take'
+	prof_pred = 'cb_time_prof'
 	fee = 0
 cols = np.array(features)
 cols = np.append(cols,to_predict)

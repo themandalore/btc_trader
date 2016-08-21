@@ -32,7 +32,7 @@ Use prices.csv when ready
 classified = 'p_'+version + '_total.csv'
 
 df = pd.DataFrame.from_csv(directory + classified)
-df,px = preprocess(df)
+df,kpx,cbx = preprocess(df)
 print (df.head())
 
 stime=df['k_time2'].min()
@@ -48,15 +48,27 @@ plt.text(0.1,0.4,text2,ha='left',va='center')
 plt.savefig(pp, format='pdf')
 plt.clf()
 
-data = {'Min':'Max',}
+Mins = {'Column':'Min',}
+Maxs = {'Column':'Max',}
+
+plt.figure() 
+plt.axis('off')
+
 for column in df:
     d=df[column].min()
     e=df[column].max()
-    data[d] = e
+    Mins[column] = d
+    Maxs[column]= e
+print (Mins)
+print (Maxs)
 
-print (data)
-
-
+plt.figure() 
+plt.axis('off')
+plt.text(0.1,0.9,"Summary Stats",ha='center',va='center')
+plt.text(0.1,0.5,text1,ha='left',va='center')
+plt.text(0.1,0.4,text2,ha='left',va='center')
+plt.savefig(pp, format='pdf')
+plt.clf()
 
 #df.set_index(['k_time2','K_bid'])
 df2 = df[df['k_bid_vol'] > 0]

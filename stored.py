@@ -36,18 +36,21 @@ features = ["btce_spread",
 			'delta_cb_spread',
 			'cb_k_diff',
 			'cb_btce_diff',
+			'cb_vol5',
+			'cb_vol20',
+			'delta_cb_USD',
 			]
 
             
-good_feats = ['ma_diff20', 'ma_diff5', 'k_spread', 'delta_kavol', 'delta_kbvol', 'delta_btce_bid', 'delta_okc_ask', 'delta_k_ask', 'k_imbalance', 'btce_spread', 'okc_spread', 'delta_okc_bid', 'delta_btce_ask', 'delta_uc_trans', 'k_btce_diff']
+k_good_feats = ['k_spread', 'k_imbalance', 'btce_spread', 'delta_okc_ask', 'delta_kavol', 'cbma_diff20', 'delta_cb_spread', 'ma_diff20', 'ma_diff5', 'delta_kbvol', 'k_gradient_diff', 'okc_cb_diff', 'delta_okc_bid', 'delta_uc_trans', 'cb_k_diff', 'delta_k_ask', 'okc_spread', 'delta_btce_bid']
+cb_good_feats = ['k_imbalance', 'k_spread', 'btce_spread', 'delta_okc_ask', 'delta_kavol', 'delta_kbvol', 'cbma_diff20', 'delta_cb_spread', 'ma_diff20', 'k_gradient_diff', 'ma_diff5', 'delta_btce_bid', 'okc_cb_diff', 'delta_okc_bid', 'okc_spread']
 
 errors = 0
-x= 0
 def gdax():
 	USD = PublicClient.getProductTicker(product="BTC-USD")['price']
 	ticker = PublicClient.getProductTicker(product='ETH-BTC')
 	bid=ticker['bid']
-	ask = ticker['bid']
+	ask = ticker['ask']
 	Book = PublicClient.getProductOrderBook(level=2, product='ETH-BTC')
 	b_depth=0
 	a_depth=0
@@ -155,7 +158,6 @@ def toshi_ut():
         return totals
 
 def get_data():
-	global x
 	global errors
 	USD, bid, ask,b_depth,a_depth,adj_imb = gdax()
 	cb_USD = float(USD)
@@ -248,40 +250,25 @@ def preprocess_act(data):
 	df['delta_kbvol'] = df['k_bid_vol']-df['k_bid_vol'].shift(1)
 	df['delta_kavol'] = df['k_ask_vol']-df['k_ask_vol'].shift(1)
 	df['k_imbalance']=df['k_ask_vol']-df['k_bid_vol']
-	try:
-		df['k_gradient_diff']=df['k_a_gradient']/df['k_b_gradient']
-	except:
-		df['k_gradient_diff']=1
+	df['k_gradient_diff']=df['k_a_gradient']/df['k_b_gradient']
 	df['kprice_ma'] = pd.rolling_mean(df['k_ask'],5)
 	df['ma_diff5'] = df['kprice_ma']-df['k_ask']
 	df['kprice_ma2'] = pd.rolling_mean(df['k_ask'],20)
 	df['ma_diff20'] = df['kprice_ma']-df['k_ask']
 	df['k_take']=0
 	df['cb_take']=0
-	try:
-		df['cb_spread']=df['cb_ask']-df['cb_bid']
-		df['okc_cb_diff']=df['cb_USD']-df['okc_ask']
-		df['cbprice_ma'] = pd.rolling_mean(df['cb_ask'],5)
-		df['cbma_diff5'] = df['cbprice_ma']-df['cb_ask']
-		df['cbprice_ma2'] = pd.rolling_mean(df['cb_ask'],20)
-		df['cbma_diff20'] = df['cbprice_ma']-df['cb_ask']
-		df['delta_cb_spread']=df['cb_spread'] - df['cb_spread'].shift(1)
-		df['cb_k_diff']=df['cb_ask']-df['k_ask']
-		df['cb_btce_diff']=df['cb_ask']-df['btce_ETH_sell']
-	except:
-		df['cb_spread']=df['k_spread']
-		df['okc_cb_diff']=0
-		df['cbprice_ma'] = 0
-		df['cbma_diff5'] = 0
-		df['cbprice_ma2'] = 0
-		df['cbma_diff20'] = 0
-		df['delta_cb_spread']=0
-		df['cb_k_diff']=0
-		df['cb_btce_diff']=0
-		df['cb_bid']=0
-		df['cb_ask']=0
-		df['cb_adj_imb']=0
-		df['cb_USD']=-999999
+	df['cb_spread']=df['cb_ask']-df['cb_bid']
+	df['okc_cb_diff']=df['cb_USD']-df['oksell']
+	df['delta_cb_USD']=df['cb_USD'] - df['cb_USD'].shift(1)
+	df['cbprice_ma'] = pd.rolling_mean(df['cb_ask'],5)
+	df['cbma_diff5'] = df['cbprice_ma']-df['cb_ask']
+	df['cbprice_ma2'] = pd.rolling_mean(df['cb_ask'],20)
+	df['cbma_diff20'] = df['cbprice_ma']-df['cb_ask']
+	df['delta_cb_spread']=df['cb_spread'] - df['cb_spread'].shift(1)
+	df['cb_k_diff']=df['cb_ask']-df['k_ask']
+	df['cb_btce_diff']=df['cb_ask']-df['btce_ETH_sell']
+	df['cb_vol5']=pd.rolling_std(df['cb_ask'],5)
+	df['cb_vol20']=pd.rolling_std(df['cb_ask'],20)
 	return df
 
 quantity = 10
@@ -289,12 +276,12 @@ control = 500 * quantity
 
 def preprocess(data):
 	df = preprocess_act(data)
-	df['k_time_prof'] = control * (df['K_bid'].shift(-1)-1.0016 * df['k_ask'] -.0016*df['K_bid'].shift(-1))
+	df['k_time_prof'] = control * (df['delta_k_bid'].shift(-1) - .0016 * df['k_ask'] -.0016*df['K_bid'].shift(-1))
 	df['btce_time_prof'] =control * ( df['btce_ETH_sell'].shift(-1)-1.002 * df['btce_ETH_buy']-.002*df['btce_ETH_sell'].shift(-1))
-	df['k_take'] = df.apply(lambda x : 0 if  x['k_time_prof'] <= 0 else 1,axis = 1)
-	df['btce_take'] = df.apply(lambda x : 0 if  x['btce_time_prof'] <= 0 else 1,axis = 1)
+	df['k_take'] = df.apply(lambda x : 1 if  x['k_time_prof'] > 0 else 0,axis = 1)
+	df['btce_take'] = df.apply(lambda x : 1 if  x['btce_time_prof'] > 0 else 0,axis = 1)
 	kprofit_opps = df['k_take'].sum(axis=0)
 	df['cb_time_prof']=control * (df['cb_bid'].shift(-1)- df['cb_ask'])
-	df['cb_take']=df.apply(lambda x : 0 if  x['cb_time_prof'] <= 0 else 1,axis = 1)
+	df['cb_take']=df.apply(lambda x : 1 if  x['cb_time_prof'] > 0 else 0,axis = 1)
 	cbprofit_opps=df['cb_take'].sum(axis=0)
 	return df,kprofit_opps,cbprofit_opps

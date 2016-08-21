@@ -18,7 +18,7 @@ import os,glob
 from stored import *
 
 version = 'v5'
-inc_vers = ('v5','v4','v3')
+inc_vers = ('v5',)
 
 directory = 'C:\\Code\\btc\\Trader\\Data\\'
 '''
@@ -34,27 +34,26 @@ nlen = 0
 os.chdir(directory)
 for v in inc_vers:
 	for file in glob.glob(v+"_*.csv"):
-		try:
-			numby = numby +1
-			dfname='df_'+str(numby)
-			dfname = pd.DataFrame.from_csv(file)
-			dfname,kpx,cbpx = preprocess(dfname)
-			if exchange =='kraken':
-				px1=kpx
-			elif exchange=='coinbase':
-				px1=cbpx
-			px = px1 + px
-			nlen = nlen + len(dfname.index)
-			if numby == 1:
-				dfone = dfname
-				print('Base:',file)
-			else:
-				dfone = dfone.append(dfname,ignore_index=True)
-				print (len(dfname.index))
-				print (len(dfone.index))
-				print ('Appended:',file)
-		except:
-			print ('could not add',file)
+		numby = numby +1
+		dfname='df_'+str(numby)
+		dfname = pd.DataFrame.from_csv(file)
+		dfname= dfname[dfname['K_bid'] > -1]
+		#dfname.reset_index()
+		dfname,kpx,cbpx = preprocess(dfname)
+		if exchange =='kraken':
+			px1=kpx
+		elif exchange=='coinbase':
+			px1=cbpx
+		px = px1 + px
+		nlen = nlen + len(dfname.index)
+		if numby == 1:
+			dfone = dfname
+			print('Base:',file)
+		else:
+			dfone = dfone.append(dfname,ignore_index=True)
+			print (len(dfname.index))
+			print (len(dfone.index))
+			print ('Appended:',file)
 
     	
 dfone.to_csv(directory+'total_'+classified)

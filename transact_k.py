@@ -45,6 +45,6 @@ def k_history():
 
 #print (k_trade_eth('sell','1',.28))
 
-#print(k_balance())
+print(k_balance())
 
 #print (k_open())

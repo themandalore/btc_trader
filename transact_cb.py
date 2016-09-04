@@ -43,20 +43,32 @@ API_PASS.encode('utf-8')
 auth = CoinbaseExchangeAuth(API_KEY, API_SECRET, API_PASS)
 print (auth)
 
-def cb_trade_eth(type,quantity,price):
+def cb_trade(otype,quantity,price,product):
+
+	'''otype = buy or sell '''
 
 	order = {
-	'size': 1.0,
-	'price': 1.0,
-	'side': 'buy',
-	'product_id': 'BTC-USD',
+	'size': quantity,
+	'price': price,
+	'side': otype,
+	'product_id': product,
 	}
 	r = requests.post(api_url + 'orders', json=order, auth=auth)
 	x = r.json()
 	return x
 
+def cancel_all():
+	r = requests.delete(api_url +'orders',auth=auth)
+	x = r.json()
+	return x
+
+def cancel_order(id):
+	r = requests.delete(api_url +'orders/'+ id,auth=auth)
+	x = r.json()
+	return x
+
 def cb_open():
-	r = requests.post(api_url + 'orders', auth=auth)
+	r = requests.get(api_url + 'orders', auth=auth)
 	x = r.json()
 	return x
 
@@ -74,22 +86,45 @@ def cb_balance():
 def cb_history():
 	accounts =[]
 	history =[]
-	r = requests.post(api_url + 'accounts', auth=auth)
+	r = requests.get(api_url + 'accounts', auth=auth)
 	x = r.json()
 	for i in x:
-		if i['balance']>0:
+		y =float(i['balance'])
+		if y > 0:
 			accounts.append(i['id'])
 	for i in accounts:
-		r = requests.post(api_url + 'accounts/' + i +'/ledger', auth=auth)
+		r = requests.get(api_url + 'accounts/' + i +'/ledger', auth=auth)
 		x = r.json()
-		history.append(x)
+		for j in x:
+			history.append(j.copy())
+			print (j)
 	return history
 
+num_trades =0
+#for i in cb_history():
+#	num_trades += 1
 
-print (cb_balance())
 
-#print (k_trade_eth('sell','1',.28))
+#print (num_trades)
+#print (cb_balance())
 
-#print(k_balance())
+#print (cb_open())
+#print (cb_trade_eth('sell',1,.0195))
 
-#print (k_open())
+#print (cb_trade_eth('sell','1',.0197))
+#print (cb_trade_eth('buy','1',.0194))
+#print (cb_open())
+
+
+'''
+We need to figure out what confirm looks like
+'''
+y = 0 
+x = cb_trade('buy',.001,609,'BTC-USD')
+print (x)
+try:
+	if x['created_at']:
+		y =1
+except:
+	print (x)
+print (y)

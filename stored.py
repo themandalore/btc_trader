@@ -46,12 +46,12 @@ k_good_feats = ['k_spread', 'k_imbalance', 'btce_spread', 'delta_okc_ask', 'delt
 cb_good_feats = ['k_imbalance', 'k_spread', 'btce_spread', 'delta_okc_ask', 'delta_kavol', 'delta_kbvol', 'cbma_diff20', 'delta_cb_spread', 'ma_diff20', 'k_gradient_diff', 'ma_diff5', 'delta_btce_bid', 'okc_cb_diff', 'delta_okc_bid', 'okc_spread']
 
 errors = 0
-def gdax():
+def gdax(base_prod):
 	USD = PublicClient.getProductTicker(product="BTC-USD")['price']
-	ticker = PublicClient.getProductTicker(product='ETH-BTC')
+	ticker = PublicClient.getProductTicker(product=base_prod)
 	bid=ticker['bid']
 	ask = ticker['ask']
-	Book = PublicClient.getProductOrderBook(level=2, product='ETH-BTC')
+	Book = PublicClient.getProductOrderBook(level=2, product=base_prod)
 	b_depth=0
 	a_depth=0
 	a_grade=0
@@ -64,6 +64,16 @@ def gdax():
 		b_grade= b_grade + float(i[0])*float(i[1])
 	adj_imb = a_grade/b_grade
 	return USD, bid, ask,b_depth,a_depth,adj_imb
+
+def USD_gdax():
+	USD = PublicClient.getProductTicker(product="BTC-USD")['price']
+	return USD
+
+def mmgdax(base_prod):
+	ticker = PublicClient.getProductTicker(product=base_prod)
+	bid=ticker['bid']
+	ask = ticker['ask']
+	return bid, ask
 
 '''
 Get bid/ask , depth (imbalance/ gradients), USD price (for OKC comp)
@@ -159,7 +169,7 @@ def toshi_ut():
 
 def get_data():
 	global errors
-	USD, bid, ask,b_depth,a_depth,adj_imb = gdax()
+	USD, bid, ask,b_depth,a_depth,adj_imb = gdax('ETH-BTC')
 	cb_USD = float(USD)
 	cb_bid = float(bid)
 	cb_ask = float (ask)

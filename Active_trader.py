@@ -6,6 +6,7 @@ import numpy as np
 from stored import *
 from numpy import array
 from transact_k import *
+from transact_cb import *
 import shutil, os
 
 
@@ -16,8 +17,8 @@ Pull in classifier
 Keep track of all open orders, positions, and expected/ actual profits
 '''
 
-TRADE = True
-PREDICT = True
+TRADE = False
+PREDICT = False
 breaker = 0
 exchange = 'kraken'
 if exchange == 'kraken':
@@ -65,7 +66,6 @@ while True:
 			print (outstring)
 			return k_bid, k_ask
 			
-	#This pulls in our classifier
 	while x < 20:
 		try:
 			k_bid,k_ask = newrow()
@@ -94,20 +94,13 @@ while True:
 				time.sleep(time_lag-1)
 				if date != strftime("%Y-%m-%d"):
 					break
-			
-			
 			elif a[:1]==1 and TRADE:
 				trades =+ 1
-				print (k_trade_eth('buy','10',k_ask))
-				time.sleep(time_lag-5)
-				try:
-					newrow()
-				except:
-					pass
-				k_data =  kraken()
-				new_bids= float(k_data['bids'][0][0])
+				min_sp = k_ask - k_bid
+				new_bids = min_sp + .0002
+				print (k_trade_eth('buy','10',min_sp))
 				print (k_trade_eth('sell','10',new_bids))
-				exp_prof = (new_bids-k_ask) * 10
+				exp_prof = (new_bids-min_sp) * 10
 				print ('Exp Profit:',exp_prof)
 				print(k_balance())
 				time.sleep(time_lag-5)

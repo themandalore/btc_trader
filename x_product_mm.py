@@ -43,18 +43,7 @@ for i in cb_history():
 
 print (cancel_all())
 
-def datagrab():
-	USD = float(USD_gdax())
-	bid1, ask1 = mmgdax(prod_string1)
-	bid1 = float(bid1)
-	ask1 = float(ask1)
-	bid2, ask2 = mmgdax(prod_string2)
-	bid2 = float(bid2)
-	ask2 = float(ask2)
-	bid3, ask3 = mmgdax(prod_string3)
-	bid3 = float(bid3)
-	ask3 = float(ask1)
-	return USD, bid1,ask1,bid2,ask2,bid3,ask3 
+
 
 while True:
 	time.sleep(1)
@@ -69,72 +58,80 @@ while True:
 
 	USD, bid1,ask1,bid2,ask2,bid3,ask3 = datagrab()
 	#this tells us if theres an arb op. if mbuy1, buy btc, sell for eth, sell for USD
-	if ask1 < (bid3/bid2):
+	if ask1 < (bid2/bid3)-.0025*bid2 -.0025*bid3:
+		print ('Arb number UBEU:',ask1 - (bid2/bid3))
+		qee = trade_quant1/bid3
+		trade_quant3 = round(float(qee),2)
+		print (trade_quant3, qee)
 		change = 1 
 		y = 0 
 		while y < 3:
-			x = cb_trade('buy',trade_quant1,ask1,'BTC-USD')
+			x = cb_trade('buy',trade_quant1,ask1,prod_string1)
 			try:
 				if x['created_at']:
 					y = 3
-					print ('ARB SELL TRADE (btc usd):',x)
+					print ('ARB UBEU TRADE (btc usd):',x)
 			except:
-				print ('ERROR in ARB sell Trade (btc usd')
+				print ('ERROR in ARB UBEU Trade (btc usd)',x)
 				y =+ 1
 		y = 0 
 		while y < 3:
-			x = cb_trade('sell',trade_quant2,bid2,'ETH-USD')
+			x = cb_trade('sell',trade_quant3,bid3,prod_string3)
 			try:
 				if x['created_at']:
 					y = 3
-					print ('ARB SELL TRADE (btc usd):',x)
+					print ('ARB UBEU TRADE (eth btc):',x)
 			except:
-				print ('ERROR in ARB sell Trade (btc usd')
+				print ('ERROR in ARB UBEU Trade (eth btc)',x)
 				y =+ 1
 		y=0
 		while y < 3:
-			x = cb_trade('sell',trade_quant2,bid2,'ETH-BTC')
+			x = cb_trade('sell',trade_quant3,bid2,prod_string2)
 			try:
 				if x['created_at']:
 					y = 3
-					print ('ARB SELL TRADE (btc usd):',x)
+					print ('ARB UBEU TRADE (eth usd):',x)
 			except:
-				print ('ERROR in ARB sell Trade (btc usd')
+				print ('ERROR in ARB UBEU Trade (eth usd)',X)
 				y =+ 1
 
 		USD, bid1,ask1,bid2,ask2,bid3,ask3 = datagrab()
-	if bid1 > (ask3/ask2):
+	if bid1 > (ask2/bid3)+.0025*ask2 +.0025*bid3:
+		print ('Arb number BUEB',bid1 - (ask2/bid3))
+		qee = trade_quant1/bid3
+		trade_quant3 = round(float(qee),2)
+		print (trade_quant3, qee)
 		change = 1 
 		y = 0 
 		while y < 3:
-			x = cb_trade('sell',trade_quant1,ask1,'BTC-USD')
+			x = cb_trade('sell',trade_quant1,ask1,prod_string1)
 			try:
 				if x['created_at']:
 					y = 3
-					print ('ARB SELL TRADE (btc usd):',x)
+					print ('ARB BUEB TRADE (btc usd):')
 			except:
-				print ('ERROR in ARB sell Trade (btc usd')
-				y =+ 1
+				print ('ERROR in ARB BUEB Trade (btc usd',x)
+				y = y + 1
 		y = 0 
 		while y < 3:
-			x = cb_trade('buy',trade_quant2,bid2,'ETH-USD')
+			x = cb_trade('buy',trade_quant3,ask2,prod_string2)
 			try:
 				if x['created_at']:
 					y = 3
-					print ('ARB SELL TRADE (btc usd):',x)
+					print ('ARB BUEB TRADE (eth usd):')
 			except:
-				print ('ERROR in ARB sell Trade (btc usd')
-				y =+ 1
+				print ('ERROR in ARB BUEB Trade (eth usd',x)
+				y = y + 1
 		y=0
 		while y < 3:
-			x = cb_trade('buy',trade_quant2,bid2,'ETH-BTC')
+			x = cb_trade('sell',trade_quant3,ask3,prod_string3)
 			try:
 				if x['created_at']:
 					y = 3
-					print ('ARB SELL TRADE (btc usd):',x)
+					print ('ARB BUEB TRADE (btc eth):')
 			except:
-				print ('ERROR in ARB sell Trade (btc usd')
-				y =+ 1
+				print ('ERROR in ARB BUEB Trade (btc eth',x)
+				y = y + 1
 
 		USD, bid1,ask1,bid2,ask2,bid3,ask3 = datagrab()
 
@@ -153,15 +150,15 @@ while True:
 		open_orders1 = open_asks1 + open_bids1
 
 		if quant_change_p1 <=0:
-			if open_bids == 0:
-				open_bid_price = ask - spread_thresh
-				print ('BID PLACED',cb_trade('buy',trade_quant,open_bid_price,prod_string))
+			if open_bids1 == 0:
+				open_bid_price = round(float(ask1 - spread_thresh1),2)
+				print ('BID PLACED',cb_trade('buy',trade_quant1,open_bid_price,prod_string1))
 				num_orders += 1
 				change = 1
-			elif abs(bid-bid_price) > order_thresh:
-				print ('Modification Cancel:',cancel_order(bid_id))
-				open_bid_price = ask - spread_thresh
-				print ('BID PLACED',cb_trade('buy',trade_quant,open_bid_price,prod_string))
+			elif abs(bid1-bid_price1) > order_thresh1:
+				print ('Modification Cancel:',cancel_order(bid_id1))
+				open_bid_price = ask1 - spread_thresh1
+				print ('BID PLACED',cb_trade('buy',trade_quant1,open_bid_price,prod_string1))
 				num_orders += 1
 				change = 1
 
@@ -169,15 +166,15 @@ while True:
 				pass
 
 		if quant_change_p1 >=0:
-			if open_asks == 0:
-				open_ask_price = bid + spread_thresh
-				print ('ASK PLACED',cb_trade('sell',trade_quant,open_ask_price,prod_string))
+			if open_asks1 == 0:
+				open_ask_price = bid1 + spread_thresh1
+				print ('ASK PLACED',cb_trade('sell',trade_quant1,open_ask_price,prod_string1))
 				num_orders +=1
 				change = 1
-			elif abs(ask-ask_price) > order_thresh:
-				print ('Modification Cancel (Ask):',cancel_order(ask_id))
-				open_ask_price = bid + spread_thresh
-				print ('ASK PLACED',cb_trade('sell',trade_quant,open_ask_price,prod_string))
+			elif abs(ask1-ask_price1) > order_thresh1:
+				print ('Modification Cancel (Ask):',cancel_order(ask_id1))
+				open_ask_price = bid1+ spread_thresh1
+				print ('ASK PLACED',cb_trade('sell',trade_quant1,open_ask_price,prod_string1))
 				num_orders +=1
 				change = 1
 			else:
@@ -191,7 +188,7 @@ while True:
 				quant_change_p2 = float(i[1]) - starting_p2_balance
 			elif i[0]==p3:
 				quant_change_p3 = float(i[1]) - starting_p3_balance
-		total_change = quant_change_p2 + (quant_change_p1 * (bid1 + ask1)/2)+quant_change_p3*(bid2 + ask2)/2
+		total_change = quant_change_p2 + (quant_change_p1 * (bid1 + ask1)/2)+quant_change_p3*(bid3 + ask3)/2
 		num_trades = -s_trades
 		for i in cb_history():
 			num_trades += 1
@@ -205,10 +202,10 @@ while True:
 			'ETH Profit',quant_change_p3,
 			'Adj Profit',total_change,
 			'Number of Trades:',num_trades,
-			'Number of Orders:',num_orders,
-			'Quantity Change:',quant_change)
+			'Number of Orders:',num_orders)
 
-	if abs(quant_change) > 2:
+	if total_change < -.05:
+		print ('Loss too high')
 		break
 
 

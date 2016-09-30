@@ -35,13 +35,14 @@ def load_key(path):
 	return key, secret, API_PASS
 
 
-		
+	
 api_url = 'https://api.gdax.com/'
-API_KEY,API_SECRET,API_PASS = load_key('coinbase.key')
-API_KEY.encode('utf-8')
-API_PASS.encode('utf-8')
-auth = CoinbaseExchangeAuth(API_KEY, API_SECRET, API_PASS)
-print (auth)
+def auth():	
+	API_KEY,API_SECRET,API_PASS = load_key('coinbase.key')
+	API_KEY.encode('utf-8')
+	API_PASS.encode('utf-8')
+	auth = CoinbaseExchangeAuth(API_KEY, API_SECRET, API_PASS)
+	return auth
 
 def cb_trade(otype,quantity,price,product):
 
@@ -53,51 +54,49 @@ def cb_trade(otype,quantity,price,product):
 	'side': otype,
 	'product_id': product,
 	}
-	r = requests.post(api_url + 'orders', json=order, auth=auth)
+	r = requests.post(api_url + 'orders', json=order, auth=auth())
 	x = r.json()
 	return x
 
 def cancel_all():
-	r = requests.delete(api_url +'orders',auth=auth)
+	r = requests.delete(api_url +'orders',auth=auth())
 	x = r.json()
 	return x
 
 def cancel_order(id):
-	r = requests.delete(api_url +'orders/'+ id,auth=auth)
+	r = requests.delete(api_url +'orders/'+ id,auth=auth())
 	x = r.json()
 	return x
 
 def cb_open():
-	r = requests.get(api_url + 'orders', auth=auth)
+	r = requests.get(api_url + 'orders', auth=auth())
 	x = r.json()
 	return x
 
 
 def cb_balance():
 	balances = []
-	r = requests.get(api_url + 'accounts', auth=auth)
+	r = requests.get(api_url + 'accounts', auth=auth())
 	x = r.json()
 	for i in x:
 		y = (i['currency'],i['balance'])
 		balances.append(y)
 	return balances
 
-
 def cb_history():
 	accounts =[]
 	history =[]
-	r = requests.get(api_url + 'accounts', auth=auth)
+	r = requests.get(api_url + 'accounts', auth=auth())
 	x = r.json()
 	for i in x:
 		y =float(i['balance'])
 		if y > 0:
 			accounts.append(i['id'])
 	for i in accounts:
-		r = requests.get(api_url + 'accounts/' + i +'/ledger', auth=auth)
+		r = requests.get(api_url + 'accounts/' + i +'/ledger', auth=auth())
 		x = r.json()
 		for j in x:
 			history.append(j.copy())
-			print (j)
 	return history
 
 num_trades =0
@@ -119,12 +118,3 @@ num_trades =0
 '''
 We need to figure out what confirm looks like
 '''
-y = 0 
-x = cb_trade('buy',.001,609,'BTC-USD')
-print (x)
-try:
-	if x['created_at']:
-		y =1
-except:
-	print (x)
-print (y)

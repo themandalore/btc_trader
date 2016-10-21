@@ -6,8 +6,17 @@ import numpy as np
 import time, json, requests, csv, datetime
 import pandas as pd
 
+'''
+Get ma quantity to replace 0 as base quantity
+Get orig_price of asset to calculate profit and loss based on total value and totalvalue vs market value (if mkt loses)
 
+
+'''
 class MarketMaker:
+ 
+ 
+
+
 	def make_mark(self,product,trade_quant,spread_thresh,order_thresh):
 		profit = 0
 		#I use .01 for BTC USD
@@ -18,33 +27,58 @@ class MarketMaker:
 		p1 = product.split('/')[0]
 		p2 = product.split('/')[1]
 		prod_string = p1+'-'+p2
-
+		ma_quantity = 0
+		ma_level = 30 #enter seconds for malevel
+		USD, bid, ask,b_depth,a_depth,adj_imb = gdax(prod_string)
+		start_price = float(USD)
+		titles = ('time','low','high','open','close','volume')
+		init_time = 0
+		hist_data = []
+		print ('wait 30...')
+		while init_time <= ma_level:
+			USD = float(USD)
+			hist_data.append(USD)
+			time.sleep(1)
+			init_time = init_time + 1
+			USD, bid, ask,b_depth,a_depth,adj_imb = gdax(prod_string)
+		last_values = hist_data[-ma_level:]
+		ma_price = np.sum(last_values)/ma_level
 		x = cb_balance()
 		for i in x:
-			if i[0]==p1:
-				starting_eth_balance =float(i[1])
-			if i[0] ==p2:
+			if i[0]=='USD':
+				starting_usd_balance =float(i[1])
+			if i[0] =='BTC':
 				starting_btc_balance = float(i[1])
 		quant_change = 0
+		start_balance =  start_price*starting_btc_balance + starting_usd_balance
 
 		s_trades = 0
 		for i in cb_history():
 			s_trades += 1
 
 		print (cancel_all())
-
-		while True:
+		zzz=0
+		while True and zzz==0:
 			time.sleep(1)
 			USD, bid, ask,b_depth,a_depth,adj_imb = gdax(prod_string)
 			bid = float(bid)
 			ask = float(ask)
 			USD = float(USD)
-
+			hist_data.append(USD)
+			last_values = hist_data[-ma_level:]
+			ma_price = np.sum(last_values)/ma_level
+			'''Currently ma_quanity is just one of the trade_quant, if volume and trades are high enough, this can increase'''
+			if USD - ma_price == 0:
+				ma_quantity = 0
+			elif USD- ma_price > 0:
+				ma_quantity = -trade_quant
+			else:
+				ma_quantity = trade_quant
 			change = 0
 			x = cb_balance()
 			for i in cb_balance():
-				if i[0]==p1:
-					quant_change = float(i[1]) - starting_eth_balance
+				if i[0]=='BTC':
+					quant_change = float(i[1]) - starting_btc_balance
 
 			if ask - bid > 0:
 				open_bids = 0
@@ -60,15 +94,15 @@ class MarketMaker:
 						ask_id = i['id']
 				open_orders = open_asks + open_bids
 
-				if quant_change <=0:
+				if quant_change <=ma_quantity:
 					if open_bids == 0:
-						open_bid_price = ask - spread_thresh
+						open_bid_price = round(float(ask - spread_thresh),2)
 						print ('BID PLACED',cb_trade('buy',trade_quant,open_bid_price,prod_string))
 						num_orders += 1
 						change = 1
 					elif abs(bid-bid_price) > order_thresh:
 						print ('Modification Cancel:',cancel_order(bid_id))
-						open_bid_price = ask - spread_thresh
+						open_bid_price = ask - round(float(ask - spread_thresh),2)
 						print ('BID PLACED',cb_trade('buy',trade_quant,open_bid_price,prod_string))
 						num_orders += 1
 						change = 1
@@ -76,15 +110,15 @@ class MarketMaker:
 					else:
 						pass
 
-				if quant_change >=0:
+				if quant_change >=ma_quantity:
 					if open_asks == 0:
-						open_ask_price = bid + spread_thresh
+						open_ask_price = round(float(bid + spread_thresh),2)
 						print ('ASK PLACED',cb_trade('sell',trade_quant,open_ask_price,prod_string))
 						num_orders +=1
 						change = 1
 					elif abs(ask-ask_price) > order_thresh:
 						print ('Modification Cancel (Ask):',cancel_order(ask_id))
-						open_ask_price = bid + spread_thresh
+						open_ask_price = round(float(bid + spread_thresh),2)
 						print ('ASK PLACED',cb_trade('sell',trade_quant,open_ask_price,prod_string))
 						num_orders +=1
 						change = 1
@@ -94,24 +128,28 @@ class MarketMaker:
 			if change > 0:	
 				x = cb_balance()
 				for i in x:
-					if i[0]==p1:
-						ethereum = float(i[1])
-					if i[0] ==p2:
+					if i[0]=='USD':
+						USD_balance = float(i[1])
+					if i[0] =='BTC':
 						bitcoin = float(i[1])
 				btc_change = starting_btc_balance - bitcoin
-				eth_change = starting_eth_balance - ethereum
-				total_change = btc_change + (eth_change * (bid + ask)/2) 
+				usd_change = starting_usd_balance - USD_balance
+				total_change = usd_change + (btc_change * (bid + ask)/2) 
 				num_trades = -s_trades
 				for i in cb_history():
-					num_trades += 1
+					num_trades = num_trades + 1
 
+				static_p_balance = USD_balance + bitcoin * start_price
+				market_rate = starting_usd_balance + starting_btc_balance* (bid + ask)/2
+				versus_mkt = USD_balance + bitcoin*(bid+ask)/2 - market_rate
 				open_orders = 0
 				for i in cb_open():
 					open_orders += 1
 				print ('Open Orders:',open_orders,
 					'Base Profit',p2,btc_change ,
-					'Subset Profit',p1,eth_change ,
+					'Subset Profit',p1,usd_change ,
 					'Adj Profit',total_change,
+					'Versus Market',versus_mkt,
 					'Number of Trades:',num_trades,
 					'Number of Orders:',num_orders,
 					'Quantity Change:',quant_change)

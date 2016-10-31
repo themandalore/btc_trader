@@ -76,9 +76,9 @@ class MarketMaker:
 				ma_price = np.sum(last_values)/ma_level
 				'''Currently ma_quantity is just one of the trade_quant, if volume and trades are high enough, this can increase'''
 				if USD - ma_price > 0:
-					ma_quantity = -trade_quant
+					ma_quantity = -trade_quant*2
 				elif USD- ma_price < 0:
-					ma_quantity = trade_quant
+					ma_quantity = trade_quant*2
 				else:
 					ma_quantity = 0
 					
@@ -109,16 +109,16 @@ class MarketMaker:
 
 					if quant_change <=ma_quantity:
 						if open_bids == 0:
-							open_bid_price = round(float(ask - spread),2)
-							print ('BID PLACED',cb_trade('buy',trade_quant,open_bid_price,prod_string))
+							open_bid_price = round(float(ask),2)
+							print ('BID PLACED',cb_trade_agg('buy',trade_quant,open_bid_price,prod_string))
 							num_orders += 1
 							if num_orders > 1:
 								num_trades += 1
 							change = 1
 						elif abs(bid-bid_price) > order_thresh:
 							print ('Modification Cancel:',cancel_order(bid_id))
-							open_bid_price = ask - round(float(ask - spread),2)
-							print ('BID PLACED',cb_trade('buy',trade_quant,open_bid_price,prod_string))
+							open_bid_price = ask - round(float(ask),2)
+							print ('BID PLACED',cb_trade_agg('buy',trade_quant,open_bid_price,prod_string))
 							num_orders += 1
 							change = 1
 
@@ -130,14 +130,14 @@ class MarketMaker:
 
 					if quant_change >=ma_quantity:
 						if open_asks == 0:
-							open_ask_price = round(float(bid + spread),2)
-							print ('ASK PLACED',cb_trade('sell',trade_quant,open_ask_price,prod_string))
+							open_ask_price = round(float(bid),2)
+							print ('ASK PLACED',cb_trade_agg('sell',trade_quant,open_ask_price,prod_string))
 							num_orders +=1
 							change = 1
 						elif abs(ask-ask_price) > order_thresh:
 							print ('Modification Cancel (Ask):',cancel_order(ask_id))
-							open_ask_price = round(float(bid + spread),2)
-							print ('ASK PLACED',cb_trade('sell',trade_quant,open_ask_price,prod_string))
+							open_ask_price = round(float(bid),2)
+							print ('ASK PLACED',cb_trade_agg('sell',trade_quant,open_ask_price,prod_string))
 							num_orders +=1
 							change = 1
 						else:

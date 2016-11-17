@@ -12,51 +12,71 @@ import datetime
 directory = 'C:\\Code\\btc\\Trader\\Data\\'
 
 
-def min_anal():
-	df = pd.DataFrame.from_csv(directory + 'coinbase_data_sec_fmt.csv')
+def min_anal(name):
+	df = pd.DataFrame.from_csv(name)
 	df['time'] = pd.to_datetime(df['time'])
 	df['price'] = (df.low + df.high)/2
-	time_range = [240,480,1000,10000]
+	df = df.dropna()
+	maxtime = df['time'].max()
+	mintime = df['time'].min()
+	time_delta = maxtime-mintime
+	if time_delta.days > 0:
+		days = time_delta.days
+	else:
+		days = 1
+	time_range = [1,120,480,1000,2000]
 	fee = .0025
-	test_range =[2,5,10,20,50]
+	test_range =[.1,2,5,10,20]
+	print ('Check text file for ouptut')
+	f = open('cb_analysis.txt', 'w')
 	for j in test_range:
 		for i in time_range:
 			n1 = 'p_delta_'+ str(i)
 			n2 = 'ma_'+str(i)
 			n3='ma_diff_'+str(i)
-			n4='own_ma_'+str(i)
+			n4='buy_vol_'+str(i)
+			n8='sell_vol_'+str(i)
+			n5 = 'volatility'+str(i)
+			n6 = 'u_thresh'+str(i)+str(j)
+			n7 = 'l_thresh'+str(i)+str(j)
 			df[n1] = df.price - df.price.shift(i)
 			df[n2] = pd.rolling_mean(df.price,i)
 			df[n3] = df.price -df[n2]
-			df[n4] = df.apply(lambda x : x['p_delta_1'] if  x[n3] > j else 0,axis = 1)
-			df['dummy_n4'] = df.apply(lambda x : 1 if  x[n3] > j else 0,axis = 1)
-			df['dummy2'] =df['dummy_n4']-df['dummy_n4'].shift(1)
-			df['cost'] = df.apply(lambda x : x['price']*fee if x['dummy2'] > 0 else 0,axis = 1)
-			maxtime = df['time'].max()
-			mintime = df['time'].min()
-			time_delta = maxtime-mintime
-			prof = df[n4].sum(axis=0)
+			df['squared']=df[n1]*df[n1]
+			df[n5]=pd.rolling_mean(df['squared'],i)
+			df[n6]=df[n2] + pd.rolling_std(df.price,i)*j
+			df[n7]=df[n5] - pd.rolling_std(df.price,i)*j
+			df['fee']=df['price']*fee
+			df[n4] = df.apply(lambda x : x['p_delta_1'] if  x['price'] > x[n6] else -1*x['p_delta_1'] if x['price'] < x[n7] else 0,axis = 1)
+			df[n8] = df.apply(lambda x : x['p_delta_1'] if  x['price'] < x[n6] else -1*x['p_delta_1'] if x['price'] > x[n7] else 0,axis = 1)
+			df['dummy_n4'] = df.apply(lambda x : 1 if  x['price'] > x[n6] or x['price'] < x[n7] else 0,axis = 1)
+			df['dummy2'] =abs(df['dummy_n4']-df['dummy_n4'].shift(1))
+			df['cost'] = df.apply(lambda x : x['fee'] if x['dummy2'] > 0 else 0,axis = 1)
+			prof_buyvol = df[n4].sum(axis=0)
+			prof_sellvol = df[n8].sum(axis=0)
 			scount = df['dummy_n4'].sum(axis=0)
 			cost = df['cost'].sum(axis=0)
-			Adj_prof = prof - cost
-			print ('Test Range ', j,' Profit: ',i,' : ',prof,' | Daily:',prof/time_delta.days, '  Adj_prof: ',Adj_prof , 'tradecount ',scount)
+			Adj_prof_b = prof_buyvol - cost
+			Adj_prof_s = prof_sellvol - cost
+			output= ' '.join(['Test Range ', str(j),' Profit: ',str(i),': buy:',str(prof_buyvol),'sell:',str(prof_sellvol),' | Days:',str(days), '  Adj_prof: buy: ',str(Adj_prof_b),'sell: ',str(Adj_prof_s) , 'tradecount ',str(scount)])
+			f.write(output)
+			print (output)
 
-	'''time_delta.days '''
-	df = df.dropna()
 	print ('Obs:',len(df))
 	print (df.head())
+	f.close()
 
 
-
-def sec_anal():
-	df2 = pd.DataFrame.from_csv(directory + 'coinbase_data_sec.csv')
+def sec_anal(name, granul):
+	df = pd.read_csv(name,error_bad_lines=False)
+	df2 = pd.DataFrame(df)
 	df2['time'] = pd.to_datetime(df2['time'],unit='s', format ='%Y-%m-%dT%H:%M:%S')
 	df2.dropna()
 	mintime = df2['time'].min()
 	today = df2['time'].max()
 	print (df2.tail())
 	#today = datetime.datetime.now().replace(microsecond=0)
-	tdelta = datetime.timedelta(seconds=1)
+	tdelta = datetime.timedelta(seconds=granul)
 	time_data = []
 	j=0
 	time = today
@@ -82,12 +102,17 @@ def sec_anal():
 			res[i]= res.apply(lambda x : x[i] if  x[i] > 0 else x['h2'],axis = 1)
 			minny = res[i].min(axis=0)
 			y = y + 1
+	newname = directory+'gdax_'+ str(60) +'_fmt.csv'
+	res.to_csv(newname)
 	return res
-# res = sec_anal()
+directory = 'C:\\Code\\btc\\Trader\\'
+name = directory+'gdax_'+ str(60) +'_fmt.csv'
+print (name)
+#res = sec_anal(name,60)
 # print (res.head())
 # print (res.tail())
 
 # print (len(res))
-# res.to_csv('coinbase_data_sec_fmt.csv')
 
-min_anal()
+
+min_anal(name)

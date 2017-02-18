@@ -12,24 +12,16 @@ Get orig_price of asset to calculate profit and loss based on total value and to
 
 
 '''
-class MarketMaker:
- 
- 
+class OB_trader:
 	def make_mark(self,product,trade_quant,spread_thresh,base_o_thresh):
 		print (cancel_all())
-		profit = 0
-		open_bids = 0 
-		open_asks = 0
-		#spread_thresh is min spread, order thresh is about 2 times spread if tight
-		num_orders = 0
+		profit,open_bids,open_asks,num_orders,start= (0,0,0,0,1)
 		today = datetime.date.today().strftime("%B %d, %Y")
-		name = today + '_MovingAverage.csv'
+		name = today + '_OB_trader.csv'
 		p1 = product.split('/')[0]
 		p2 = product.split('/')[1]
 		prod_string = p1+'-'+p2
 		ma_quantity = 0
-		ma_level = 2#enter seconds for malevel
-		ma_thresh = 999
 		x = cb_balance()
 		for i in x:
 			if i[0]=='USD':
@@ -52,18 +44,6 @@ class MarketMaker:
 			start_price = float(USD)
 			titles = ('time','low','high','open','close','volume')
 			init_time = 0
-			hist_data = []
-			print ('wait' ,ma_level,'...')
-			while init_time <= ma_level:
-				USD = float(USD)
-				hist_data.append(USD)
-				time.sleep(1)
-				init_time = init_time + 1
-				USD, bid, ask,b_depth,a_depth,adj_imb = gdax(prod_string)
-				if USD == 0:
-					break
-			last_values = hist_data[-ma_level:]
-			ma_price = np.sum(last_values)/ma_level
 			while True and zzz==0:
 				heartbeat=heartbeat+1
 				if heartbeat ==10:
@@ -76,20 +56,43 @@ class MarketMaker:
 				bid = float(bid)
 				ask = float(ask)
 				USD = float(USD)
-				spread = max(spread_thresh,ask-bid)
+				if (ask-bid)/2 < .01:
+					spread = max(spread_thresh,.01)
+				else:					
+					spread = max(spread_thresh,(ask-bid)/2)
 				order_thresh = max(base_o_thresh,spread * 10)
-				hist_data.append(USD)
-				last_values = hist_data[-ma_level:]
-				ma_price = np.sum(last_values)/ma_level
-				'''Currently ma_quantity is just one of the trade_quant, if volume and trades are high enough, this can increase'''
-				if USD - ma_price > ma_thresh:
-					ma_quantity = -trade_quant
-				elif USD - ma_price < -ma_thresh:
-					ma_quantity = trade_quant
+				'''Set ma_quantity'''
+				ob =cb_orderbook()
+				types = ['bids','asks']
+				if ob == 'Error'
+					break
+				for t in types:
+					wp, levels,tweight = (0,1,0)
+					for i in ob[t]:
+						price,size,orders  = (float(i[0]),float(i[1]),float(i[2]))
+						if levels == 1:
+							base = price
+						weight = float(1/ (1 - abs(base-price)) * (size**2))
+						i_wp = price * weight / weight
+						wp =+ i_wp
+						levels =+ 1
+						tweight =+ weight
+					if t =='bids':
+						bids_2,b_weight = ((wp/levels),tweight)
+					else:
+						asks_2,a_weight = ((wp/levels),tweight)
+				w_mid = float((bids_2+asks_2)/2)
+				if w_mid > ask + .15:
+					ma_quantity = 3 * trade_quant
+				elif w_mid < bid -.25:
+					ma_quantity = -3 * trade_quant
 				else:
 					ma_quantity = 0
-					
-				change = 0     
+				if start == 1:
+					change = 1
+					start = 0
+				else:
+					change = 0    
 				x = cb_balance()
 				if x == 'ERROR':
 					break
@@ -118,7 +121,7 @@ class MarketMaker:
 							ask_id = i['id']
 					open_orders = open_asks + open_bids
 
-					if quant_change <=ma_quantity:
+					if quant_change <ma_quantity:
 						if open_bids == 0:
 							open_bid_price = round(float(ask - spread),2)
 							print ('BID PLACED',cb_trade('buy',trade_quant,open_bid_price,prod_string))
@@ -136,7 +139,7 @@ class MarketMaker:
 						else:
 							pass
 
-					if quant_change >=ma_quantity:
+					if quant_change >ma_quantity:
 						if open_asks == 0:
 							open_ask_price = round(float(bid + spread),2)
 							print ('ASK PLACED',cb_trade('sell',trade_quant,open_ask_price,prod_string))
@@ -161,6 +164,8 @@ class MarketMaker:
 
 					static_p_balance = USD_balance + bitcoin * start_price
 					print ('Open Orders:',open_orders,
+						'Price',USD,
+						'Weighted Price',w_mid,
 						'Base Profit - USD',usd_change ,
 						'Subset Profit - BTC',btc_change ,
 						'Adj Profit',total_change,
@@ -168,12 +173,12 @@ class MarketMaker:
 						'Quantity Change:',quant_change,
 						'Time: ',timey)
 
-				with open(name,'a') as fd:
-					writer = csv.writer(fd)
-					writer.writerow([str(timey),str(bid),str(ask),str(usd_change),str(btc_change)])
+					with open(name,'a') as fd:
+						writer = csv.writer(fd)
+						writer.writerow([str(timey),str(bid),str(ask),str(usd_change),str(btc_change)])
 				if abs(btc_change) > .1 or total_change < -.5:
 					breaker=1
 					break
 
-mm= MarketMaker()
-mm.make_mark('BTC/USD',.03,.5,10)
+mm= OB_trader()
+mm.make_mark('BTC/USD',.01,.01,10)

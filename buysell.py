@@ -159,4 +159,4 @@ class MarketMaker:
 
 mm= MarketMaker()
 #product,trade_amount,spread_thresh,order_thresh
-mm.make_mark('ETH/USD',8.7,.01,.1)
+mm.make_mark('BTC/USD',.1,.01,.1)

@@ -39,7 +39,7 @@ def load_key(path):
 api_url = 'https://api.gdax.com/'
 
 def auth():	
-	API_KEY,API_SECRET,API_PASS = load_key('coinbase.key')
+	API_KEY,API_SECRET,API_PASS = load_key(############)
 	API_KEY.encode('utf-8')
 	API_PASS.encode('utf-8')
 	auth = CoinbaseExchangeAuth(API_KEY, API_SECRET, API_PASS)
